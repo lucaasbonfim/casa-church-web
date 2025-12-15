@@ -1,7 +1,8 @@
+import { useState } from "react";
 import axios from "axios";
-import { Link } from "react-router-dom";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
+import { Menu, X } from "lucide-react";
 
 // components
 import Avatar from "./Avatar";
@@ -11,14 +12,16 @@ import Dropdown from "./Dropdown";
 import LogoName from "../assets/logo-name.png";
 
 export default function Header() {
-  const user = JSON.parse(localStorage.getItem("user"));
-  const userName = user.name;
   const navigate = useNavigate();
+  const [mobileOpen, setMobileOpen] = useState(false);
 
-  // Verifica se o usuário é admin
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const userName = user?.name || "Usuário";
+
+  // Verifica se é admin
   let isAdmin = false;
   try {
-    if (user && user.token) {
+    if (user?.token) {
       const decoded = jwtDecode(user.token);
       isAdmin = decoded.role === "admin";
     }
@@ -27,13 +30,9 @@ export default function Header() {
   }
 
   function logout() {
-    try {
-      localStorage.removeItem("user");
-      delete axios.defaults.headers.common["Authorization"];
-      navigate("/login");
-    } catch {
-      navigate("/login");
-    }
+    localStorage.removeItem("user");
+    delete axios.defaults.headers.common["Authorization"];
+    navigate("/login");
   }
 
   const menuItems = [
@@ -42,21 +41,18 @@ export default function Header() {
       icon: "User",
       onSelect: () => navigate("/perfil"),
     },
-    // Adiciona item Admin se for admin
-    ...(isAdmin ? [
-      {
-        type: "separator",
-      },
-      {
-        label: "Painel Admin",
-        icon: "Shield",
-        className: "text-purple-500 hover:bg-purple-500/10",
-        onSelect: () => navigate("/admin/dashboard"),
-      },
-    ] : []),
-    {
-      type: "separator",
-    },
+    ...(isAdmin
+      ? [
+          { type: "separator" },
+          {
+            label: "Painel Admin",
+            icon: "Shield",
+            className: "text-purple-500 hover:bg-purple-500/10",
+            onSelect: () => navigate("/admin/dashboard"),
+          },
+        ]
+      : []),
+    { type: "separator" },
     {
       label: "Sair",
       icon: "LogOut",
@@ -65,10 +61,15 @@ export default function Header() {
     },
   ];
 
+  function closeMobile() {
+    setMobileOpen(false);
+  }
+
   return (
-    <header className="min-h-16 border-b border-white/10 bg-[#0f1115] text-white">
+    <header className="border-b border-white/10 bg-[#0f1115] text-white relative">
       <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-        <Link to="/" className="text-2xl font-bold tracking-wide">
+        {/* Logo */}
+        <Link to="/" onClick={closeMobile}>
           <img
             src={LogoName}
             alt="Logo Casa Church"
@@ -77,6 +78,8 @@ export default function Header() {
             className="select-none"
           />
         </Link>
+
+        {/* Menu Desktop */}
         <nav className="hidden md:flex gap-6 text-sm">
           <Link to="/" className="text-white/80 hover:text-white">
             Início
@@ -97,12 +100,50 @@ export default function Header() {
             Contatos
           </Link>
         </nav>
+
+        {/* Ações */}
         <div className="flex items-center gap-3">
+          {/* Botão Mobile */}
+          <button
+            className="md:hidden text-white"
+            onClick={() => setMobileOpen(!mobileOpen)}
+            aria-label="Menu"
+          >
+            {mobileOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
+
+          {/* Avatar */}
           <Dropdown items={menuItems} align="end">
             <Avatar name={userName} size="sm" className="cursor-pointer" />
           </Dropdown>
         </div>
       </div>
+
+      {/* Menu Mobile */}
+      {mobileOpen && (
+        <nav className="md:hidden bg-[#0f1115] border-t border-white/10">
+          <div className="flex flex-col px-4 py-4 gap-4 text-sm">
+            <Link to="/" onClick={closeMobile}>
+              Início
+            </Link>
+            <Link to="/sobre" onClick={closeMobile}>
+              Sobre Nós
+            </Link>
+            <Link to="/social" onClick={closeMobile}>
+              Social
+            </Link>
+            <Link to="/sermoes" onClick={closeMobile}>
+              Sermões
+            </Link>
+            <Link to="/eventos" onClick={closeMobile}>
+              Eventos
+            </Link>
+            <Link to="/contatos" onClick={closeMobile}>
+              Contatos
+            </Link>
+          </div>
+        </nav>
+      )}
     </header>
   );
 }

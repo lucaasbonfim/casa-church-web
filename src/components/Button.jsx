@@ -26,17 +26,20 @@ export default function Button({
     3: "text-white hover:text-gray-300 underline focus:ring-white",
   };
 
-  const sizes = {
-    sm: "py-1.5 px-3 text-sm",
-    md: "py-2 px-4 text-base",
-    lg: "py-3 px-6 text-lg",
-  };
+const sizes = {
+  sm: "py-0.5 px-2 text-[11px] md:py-1.5 md:px-3 md:text-sm",
+  md: "py-1 px-2.5 text-xs md:py-2 md:px-4 md:text-base",
+  lg: "py-1.5 px-3 text-sm md:py-3 md:px-6 md:text-lg",
+};
 
-  const iconOnlySizes = {
-    sm: "p-1.5",
-    md: "p-2",
-    lg: "p-3",
-  };
+
+const iconOnlySizes = {
+  sm: "p-1 md:p-1.5",
+  md: "p-1.5 md:p-2",
+  lg: "p-2 md:p-3",
+};
+
+
 
   const loaderSizes = {
     sm: 14,

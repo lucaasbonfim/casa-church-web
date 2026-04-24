@@ -50,7 +50,7 @@ export default function Events() {
     }
     const t = setTimeout(() => setSearchParams(sp), 500);
     return () => clearTimeout(t);
-  }, [searchTerm]);
+  }, [searchParams, searchTerm, setSearchParams]);
 
   const handlePageChange = (newPage) => {
     setSearchParams((prev) => {

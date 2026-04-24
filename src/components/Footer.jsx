@@ -40,6 +40,7 @@ export default function Footer() {
     { label: "Devocional", href: "/devocional" },
     { label: "Eventos", href: "/eventos" },
     { label: "Sermões", href: "/sermoes" },
+    { label: "Ofertas", href: "/doacoes" },
     { label: "Contatos", href: "/contatos" },
   ];
 

@@ -38,6 +38,7 @@ export default function Login() {
     try {
       const res = await login(formValues);
       setStoredUser({
+        id: res?.id,
         token: res?.token,
         name: res?.name || "",
         email: res?.email || "",
@@ -58,6 +59,11 @@ export default function Login() {
         error?.message ||
         "Erro ao realizar login. Tente novamente.";
       toastError(apiMessage);
+      if (error?.response?.status === 403) {
+        navigate(
+          `/confirmar-email?email=${encodeURIComponent(formValues.email)}`,
+        );
+      }
       console.log(error);
     }
   };
@@ -113,6 +119,16 @@ export default function Login() {
                   />
                 )}
               />
+
+              <div className="-mt-2 mb-5 text-right text-sm">
+                <button
+                  type="button"
+                  onClick={() => navigate("/esqueci-senha")}
+                  className="cursor-pointer text-white/70 transition-colors hover:text-white"
+                >
+                  Esqueci minha senha
+                </button>
+              </div>
 
               <Button
                 type="submit"

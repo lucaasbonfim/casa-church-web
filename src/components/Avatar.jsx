@@ -1,4 +1,15 @@
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
+
+const avatarColors = [
+  "bg-blue-500",
+  "bg-purple-500",
+  "bg-pink-500",
+  "bg-red-500",
+  "bg-orange-500",
+  "bg-green-500",
+  "bg-teal-500",
+  "bg-indigo-500",
+];
 
 export default function Avatar({
   name = "",
@@ -6,54 +17,40 @@ export default function Avatar({
   size = "md",
   className = "",
 }) {
-  const [initials, setInitials] = useState("");
-  const [bgColor, setBgColor] = useState("bg-blue-500");
-  const [imageError, setImageError] = useState(false);
+  const [failedImageSrc, setFailedImageSrc] = useState("");
 
-  useEffect(() => {
-    setImageError(false);
-  }, [src]);
-
-  useEffect(() => {
+  const { initials, bgColor } = useMemo(() => {
     try {
-      if (name) {
-        const nameParts = name
-          .trim()
-          .split(/\s+/)
-          .filter((part) => part.length > 0);
-
-        if (nameParts.length >= 2) {
-          const firstInitial = nameParts[0][0].toUpperCase();
-          const lastInitial = nameParts[nameParts.length - 1][0].toUpperCase();
-          setInitials(firstInitial + lastInitial);
-        } else if (nameParts.length === 1) {
-          setInitials(nameParts[0][0].toUpperCase());
-        } else {
-          setInitials("?");
-        }
-
-        const hash = name.split("").reduce((acc, char) => {
-          return char.charCodeAt(0) + ((acc << 5) - acc);
-        }, 0);
-
-        const colors = [
-          "bg-blue-500",
-          "bg-purple-500",
-          "bg-pink-500",
-          "bg-red-500",
-          "bg-orange-500",
-          "bg-green-500",
-          "bg-teal-500",
-          "bg-indigo-500",
-        ];
-
-        setBgColor(colors[Math.abs(hash) % colors.length]);
-      } else {
-        setInitials("?");
+      if (!name) {
+        return { initials: "?", bgColor: avatarColors[0] };
       }
+
+      const nameParts = name
+        .trim()
+        .split(/\s+/)
+        .filter((part) => part.length > 0);
+
+      let nextInitials = "?";
+
+      if (nameParts.length >= 2) {
+        const firstInitial = nameParts[0][0].toUpperCase();
+        const lastInitial = nameParts[nameParts.length - 1][0].toUpperCase();
+        nextInitials = firstInitial + lastInitial;
+      } else if (nameParts.length === 1) {
+        nextInitials = nameParts[0][0].toUpperCase();
+      }
+
+      const hash = name.split("").reduce((acc, char) => {
+        return char.charCodeAt(0) + ((acc << 5) - acc);
+      }, 0);
+
+      return {
+        initials: nextInitials,
+        bgColor: avatarColors[Math.abs(hash) % avatarColors.length],
+      };
     } catch (error) {
       console.error("Erro ao processar nome do Avatar:", error);
-      setInitials("?");
+      return { initials: "?", bgColor: avatarColors[0] };
     }
   }, [name]);
 
@@ -66,7 +63,7 @@ export default function Avatar({
   };
 
   const sizeClass = sizeClasses[size] || sizeClasses.md;
-  const shouldShowImage = Boolean(src && !imageError);
+  const shouldShowImage = Boolean(src && failedImageSrc !== src);
 
   return (
     <div
@@ -78,7 +75,7 @@ export default function Avatar({
           src={src}
           alt={name || "Usuario"}
           className="w-full h-full object-cover"
-          onError={() => setImageError(true)}
+          onError={() => setFailedImageSrc(src)}
         />
       ) : (
         initials

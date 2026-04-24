@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import {
@@ -8,6 +8,7 @@ import {
   ExternalLink,
   Image as ImageIcon,
   PlayCircle,
+  X,
 } from "lucide-react";
 import Button from "../components/Button";
 import Loader from "../components/Loader";
@@ -133,13 +134,19 @@ function DevotionalMedia({ devotional }) {
 
 export default function Devotional() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const selectedDateValue = searchParams.get("date") || toDateInputValue(new Date());
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const selectedDateValue =
+    searchParams.get("date") || toDateInputValue(new Date());
   const selectedDate = parseDateInput(selectedDateValue);
   const monthValue = searchParams.get("month") || selectedDateValue.slice(0, 7);
   const monthDate = parseDateInput(`${monthValue}-01`);
 
-  const monthStart = toDateInputValue(new Date(monthDate.getFullYear(), monthDate.getMonth(), 1));
-  const monthEnd = toDateInputValue(new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0));
+  const monthStart = toDateInputValue(
+    new Date(monthDate.getFullYear(), monthDate.getMonth(), 1),
+  );
+  const monthEnd = toDateInputValue(
+    new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0),
+  );
 
   const { data: selectedDevotional, isLoading: isLoadingSelected } = useQuery({
     queryKey: ["devotional-by-date", selectedDateValue],
@@ -176,16 +183,22 @@ export default function Devotional() {
       : devotionalsByDate.get(selectedDateValue);
   const videoUrl = devotional?.videoUrl || devotional?.videoLink;
   const hasExternalVideo = videoUrl && !getYouTubeEmbedUrl(videoUrl);
+  const selectedDateLabel = dateFormatter.format(selectedDate);
 
   const updateDate = (dateValue) => {
     const next = new URLSearchParams(searchParams);
     next.set("date", dateValue);
     next.set("month", dateValue.slice(0, 7));
     setSearchParams(next);
+    setIsCalendarOpen(false);
   };
 
   const updateMonth = (offset) => {
-    const nextMonthDate = new Date(monthDate.getFullYear(), monthDate.getMonth() + offset, 1);
+    const nextMonthDate = new Date(
+      monthDate.getFullYear(),
+      monthDate.getMonth() + offset,
+      1,
+    );
     const next = new URLSearchParams(searchParams);
     next.set("month", toDateInputValue(nextMonthDate).slice(0, 7));
     setSearchParams(next);
@@ -208,20 +221,22 @@ export default function Devotional() {
             </p>
           </div>
 
-          <label className="w-full md:w-64">
+          <div className="w-full md:w-64">
             <span className="mb-2 block text-sm font-medium text-white/80">
               Escolher data
             </span>
-            <input
-              type="date"
-              value={selectedDateValue}
-              onChange={(event) => updateDate(event.target.value)}
-              className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition focus:border-neutral-500 focus:bg-white/10"
-            />
-          </label>
+            <button
+              type="button"
+              onClick={() => setIsCalendarOpen(true)}
+              className="flex w-full items-center justify-between rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-left text-white outline-none transition hover:border-white/20 hover:bg-white/10 focus:border-neutral-500 focus:bg-white/10"
+            >
+              <span>{selectedDateLabel}</span>
+              <CalendarDays size={18} className="text-white/65" />
+            </button>
+          </div>
         </section>
 
-        <section className="grid gap-6 lg:grid-cols-[1fr_360px]">
+        <section>
           <article className="overflow-hidden rounded-2xl border border-white/10 bg-white/5">
             {isLoadingSelected ? (
               <div className="flex min-h-[520px] items-center justify-center">
@@ -294,77 +309,106 @@ export default function Devotional() {
               </div>
             )}
           </article>
-
-          <aside className="rounded-2xl border border-white/10 bg-white/5 p-4">
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <button
-                type="button"
-                onClick={() => updateMonth(-1)}
-                className="rounded-lg border border-white/10 bg-white/5 p-2 text-white/70 hover:bg-white/10 hover:text-white"
-                aria-label="Mes anterior"
-              >
-                <ChevronLeft size={18} />
-              </button>
-              <h2 className="text-center text-sm font-semibold capitalize text-white/85">
-                {monthFormatter.format(monthDate)}
-              </h2>
-              <button
-                type="button"
-                onClick={() => updateMonth(1)}
-                className="rounded-lg border border-white/10 bg-white/5 p-2 text-white/70 hover:bg-white/10 hover:text-white"
-                aria-label="Proximo mes"
-              >
-                <ChevronRight size={18} />
-              </button>
-            </div>
-
-            <div className="grid grid-cols-7 gap-2 text-center text-xs text-white/45">
-              {weekdayLabels.map((label, index) => (
-                <span key={`${label}-${index}`}>{label}</span>
-              ))}
-            </div>
-
-            <div className="mt-2 grid grid-cols-7 gap-2">
-              {calendarDays.map((date, index) => {
-                if (!date) {
-                  return <span key={`empty-${index}`} className="aspect-square" />;
-                }
-
-                const key = toDateInputValue(date);
-                const hasDevotional = devotionalsByDate.has(key);
-                const isSelected = key === selectedDateValue;
-
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => updateDate(key)}
-                    className={`relative aspect-square rounded-lg border text-sm transition ${
-                      isSelected
-                        ? "border-white bg-white text-black"
-                        : "border-white/10 bg-black/20 text-white/75 hover:bg-white/10 hover:text-white"
-                    }`}
-                  >
-                    {date.getDate()}
-                    {hasDevotional && (
-                      <span
-                        className={`absolute bottom-1 left-1/2 h-1.5 w-1.5 -translate-x-1/2 rounded-full ${
-                          isSelected ? "bg-black/60" : "bg-white/70"
-                        }`}
-                      />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-
-            {isLoadingMonth && (
-              <div className="mt-5 flex justify-center">
-                <Loader />
-              </div>
-            )}
-          </aside>
         </section>
+
+        {isCalendarOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-8 backdrop-blur-sm">
+            <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#181b22] p-5 shadow-2xl">
+              <div className="mb-5 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/45">
+                    Devocionais
+                  </p>
+                  <h2 className="mt-1 text-lg font-semibold capitalize text-white">
+                    {monthFormatter.format(monthDate)}
+                  </h2>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setIsCalendarOpen(false)}
+                  className="rounded-lg border border-white/10 bg-white/5 p-2 text-white/70 hover:bg-white/10 hover:text-white"
+                  aria-label="Fechar calendario"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={() => updateMonth(-1)}
+                  className="rounded-lg border border-white/10 bg-white/5 p-2 text-white/70 hover:bg-white/10 hover:text-white"
+                  aria-label="Mes anterior"
+                >
+                  <ChevronLeft size={18} />
+                </button>
+                <p className="text-sm text-white/60">
+                  Selecione um dia publicado
+                </p>
+                <button
+                  type="button"
+                  onClick={() => updateMonth(1)}
+                  className="rounded-lg border border-white/10 bg-white/5 p-2 text-white/70 hover:bg-white/10 hover:text-white"
+                  aria-label="Proximo mes"
+                >
+                  <ChevronRight size={18} />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-7 gap-2 text-center text-xs text-white/45">
+                {weekdayLabels.map((label, index) => (
+                  <span key={`${label}-${index}`}>{label}</span>
+                ))}
+              </div>
+
+              <div className="mt-2 grid grid-cols-7 gap-2">
+                {calendarDays.map((date, index) => {
+                  if (!date) {
+                    return (
+                      <span key={`empty-${index}`} className="aspect-square" />
+                    );
+                  }
+
+                  const key = toDateInputValue(date);
+                  const hasDevotional = devotionalsByDate.has(key);
+                  const isSelected = hasDevotional && key === selectedDateValue;
+
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      disabled={!hasDevotional}
+                      onClick={() => updateDate(key)}
+                      className={`relative aspect-square rounded-lg border text-sm transition ${
+                        isSelected
+                          ? "border-white bg-white text-black"
+                          : hasDevotional
+                            ? "border-white/10 bg-black/20 text-white/80 hover:bg-white/10 hover:text-white"
+                            : "cursor-not-allowed border-white/5 bg-black/10 text-white/20"
+                      }`}
+                    >
+                      {date.getDate()}
+                      {hasDevotional && (
+                        <span
+                          className={`absolute bottom-1 left-1/2 h-1.5 w-1.5 -translate-x-1/2 rounded-full ${
+                            isSelected ? "bg-black/60" : "bg-white/70"
+                          }`}
+                        />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {isLoadingMonth && (
+                <div className="mt-5 flex justify-center">
+                  <Loader />
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );

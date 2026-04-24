@@ -14,17 +14,19 @@ export default function AdminRoute() {
 
   const user = getStoredUser();
 
+  let isAdmin = false;
+
   try {
     const decoded = jwtDecode(user.token);
-    const isAdmin = decoded.role === "admin";
-
-    if (!isAdmin) {
-      return <Navigate to="/" replace />;
-    }
+    isAdmin = decoded.role === "admin";
   } catch (error) {
     console.error("Erro ao verificar admin:", error);
     clearStoredUser();
     return <Navigate to="/login" replace />;
+  }
+
+  if (!isAdmin) {
+    return <Navigate to="/" replace />;
   }
 
   return <Outlet />;

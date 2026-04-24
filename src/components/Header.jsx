@@ -10,6 +10,7 @@ import {
   AUTH_EVENT_NAME,
   clearStoredUser,
   getStoredUser,
+  hasValidStoredSession,
 } from "../utils/authStorage";
 
 export default function Header() {
@@ -17,6 +18,7 @@ export default function Header() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [user, setUser] = useState(() => getStoredUser() || {});
   const userName = user?.name || "Usuario";
+  const isAuthenticated = Boolean(user?.token) && hasValidStoredSession();
 
   useEffect(() => {
     const syncUser = () => setUser(getStoredUser() || {});
@@ -32,7 +34,7 @@ export default function Header() {
 
   let isAdmin = false;
   try {
-    if (user?.token) {
+    if (isAuthenticated) {
       const decoded = jwtDecode(user.token);
       isAdmin = decoded.role === "admin";
     }
@@ -111,6 +113,9 @@ export default function Header() {
           <Link to="/eventos" className="text-white/80 hover:text-white">
             Eventos
           </Link>
+          <Link to="/doacoes" className="text-white/80 hover:text-white">
+            Ofertas
+          </Link>
           <Link to="/contatos" className="text-white/80 hover:text-white">
             Contatos
           </Link>
@@ -125,14 +130,24 @@ export default function Header() {
             {mobileOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
 
-          <Dropdown items={menuItems} align="end">
-            <Avatar
-              name={userName}
-              src={user?.profileImage}
-              size="sm"
-              className="cursor-pointer"
-            />
-          </Dropdown>
+          {isAuthenticated ? (
+            <Dropdown items={menuItems} align="end">
+              <Avatar
+                name={userName}
+                src={user?.profileImage}
+                size="sm"
+                className="cursor-pointer"
+              />
+            </Dropdown>
+          ) : (
+            <Link
+              to="/login"
+              className="rounded-lg bg-white px-3 py-1.5 text-sm font-medium text-black transition hover:bg-gray-100"
+              onClick={closeMobile}
+            >
+              Entrar
+            </Link>
+          )}
         </div>
       </div>
 
@@ -159,6 +174,9 @@ export default function Header() {
             </Link>
             <Link to="/eventos" onClick={closeMobile}>
               Eventos
+            </Link>
+            <Link to="/doacoes" onClick={closeMobile}>
+              Ofertas
             </Link>
             <Link to="/contatos" onClick={closeMobile}>
               Contatos

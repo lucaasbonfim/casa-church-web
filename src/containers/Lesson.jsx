@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 
 import { findLessonById } from "../services/lessons/lessonsService";
 import {
@@ -9,11 +9,13 @@ import {
 
 import Loader from "../components/Loader";
 import { toastError, toastSuccess } from "../utils/toastHelper";
+import { getStoredUser, hasValidStoredSession } from "../utils/authStorage";
 
 export default function Lesson() {
   const { lessonId } = useParams();
 
-  const user = JSON.parse(localStorage.getItem("user"));
+  const isMember = hasValidStoredSession();
+  const user = getStoredUser();
   const userId = user?.id;
 
   const [lesson, setLesson] = useState(null);
@@ -24,10 +26,10 @@ export default function Lesson() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const [lessonData, progressData] = await Promise.all([
-          findLessonById(lessonId),
-          getLessonProgress({ lessonId }),
-        ]);
+        const lessonData = await findLessonById(lessonId);
+        const progressData = isMember
+          ? await getLessonProgress({ lessonId })
+          : null;
 
         setLesson(lessonData);
 
@@ -45,7 +47,7 @@ export default function Lesson() {
     }
 
     fetchData();
-  }, [lessonId, userId]);
+  }, [isMember, lessonId, userId]);
 
   async function handleMarkAsCompleted() {
     try {
@@ -107,7 +109,8 @@ export default function Lesson() {
 
       {/* Botão de progresso */}
       <div className="flex justify-center mt-8">
-        <button
+        {isMember ? (
+          <button
           onClick={handleMarkAsCompleted}
           disabled={completed || saving}
           className={`
@@ -121,7 +124,30 @@ ${saving ? "opacity-60 cursor-wait" : ""}
 `}
         >
           {completed ? "Aula concluída" : "Marcar como concluída"}
-        </button>
+          </button>
+        ) : (
+          <div className="max-w-xl rounded-2xl border border-white/10 bg-white/5 p-5 text-center">
+            <h2 className="text-lg font-semibold">Acompanhe seu progresso</h2>
+            <p className="mt-2 text-sm text-white/65">
+              Entre como membro para marcar aulas como concluidas e continuar
+              seus estudos de onde parou.
+            </p>
+            <div className="mt-4 flex flex-col justify-center gap-3 sm:flex-row">
+              <Link
+                to="/registrar"
+                className="rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-black transition hover:bg-gray-100"
+              >
+                Criar conta
+              </Link>
+              <Link
+                to="/login"
+                className="rounded-lg bg-white/10 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/20"
+              >
+                Entrar
+              </Link>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

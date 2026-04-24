@@ -43,6 +43,8 @@ export default function Login() {
         name: res?.name || "",
         email: res?.email || "",
         profileImage: res?.profileImage || "",
+        role: res?.role || "user",
+        adminModules: Array.isArray(res?.adminModules) ? res.adminModules : [],
       });
       // eslint-disable-next-line react-hooks/immutability
       axios.defaults.headers.common["Authorization"] = res?.token

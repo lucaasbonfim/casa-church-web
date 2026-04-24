@@ -9,15 +9,31 @@ export async function getAdminStats() {
 
 // eslint-disable-next-line no-unused-vars
 export async function getRecentActivities({ page = 1, limit = 5 } = {}) {
-    const { data } = await axios.get(`${API_URL}/user-activity`);
+    const params = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString(),
+    });
 
-    // Pega apenas os mais recentes
-    const recentActivities = data.activities?.slice(0, limit) || [];
+    const { data } = await axios.get(`${API_URL}/user-activity?${params.toString()}`);
+    return data;
+}
 
-    return {
-        ...data,
-        activities: recentActivities
-    };
+export async function findUserActivities({
+    page = 1,
+    limit = 20,
+    userId,
+    action,
+} = {}) {
+    const params = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString(),
+    });
+
+    if (userId) params.append("userId", userId);
+    if (action) params.append("action", action);
+
+    const { data } = await axios.get(`${API_URL}/user-activity?${params.toString()}`);
+    return data;
 }
 
 export async function getUpcomingEvents({ page = 1, limit = 5 } = {}) {

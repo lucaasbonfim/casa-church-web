@@ -10,12 +10,15 @@ export default function AdminModal({
   isLoading = false,
   submitText = "Salvar",
   cancelText = "Cancelar",
+  containerClassName = "",
 }) {
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-      <div className="bg-[#1a1d24] rounded-2xl border border-white/10 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <div
+        className={`bg-[#1a1d24] rounded-2xl border border-white/10 w-full max-h-[90vh] overflow-y-auto max-w-2xl ${containerClassName}`}
+      >
         <div className="sticky top-0 bg-[#1a1d24] border-b border-white/10 p-6 flex items-center justify-between z-10">
           <h2 className="text-2xl font-bold">{title}</h2>
           <button

@@ -178,6 +178,7 @@ const { data: activities, isLoading: loadingActivities } = useQuery({
       'comments': 'comentários',
       'likes': 'curtidas',
       'locations': 'locais',
+      'church-houses': 'CIs',
       'user-activity': 'atividades'
     };
     

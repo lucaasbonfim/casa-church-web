@@ -1,24 +1,35 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
 import { Menu, X } from "lucide-react";
-
-// components
 import Avatar from "./Avatar";
 import Dropdown from "./Dropdown";
-
-// assets
 import LogoName from "../assets/logo-name.png";
+import {
+  AUTH_EVENT_NAME,
+  clearStoredUser,
+  getStoredUser,
+} from "../utils/authStorage";
 
 export default function Header() {
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [user, setUser] = useState(() => getStoredUser() || {});
+  const userName = user?.name || "Usuario";
 
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
-  const userName = user?.name || "Usuário";
+  useEffect(() => {
+    const syncUser = () => setUser(getStoredUser() || {});
 
-  // Verifica se é admin
+    window.addEventListener("storage", syncUser);
+    window.addEventListener(AUTH_EVENT_NAME, syncUser);
+
+    return () => {
+      window.removeEventListener("storage", syncUser);
+      window.removeEventListener(AUTH_EVENT_NAME, syncUser);
+    };
+  }, []);
+
   let isAdmin = false;
   try {
     if (user?.token) {
@@ -30,7 +41,7 @@ export default function Header() {
   }
 
   function logout() {
-    localStorage.removeItem("user");
+    clearStoredUser();
     delete axios.defaults.headers.common["Authorization"];
     navigate("/login");
   }
@@ -68,7 +79,6 @@ export default function Header() {
   return (
     <header className="border-b border-white/10 bg-[#0f1115] text-white relative">
       <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-        {/* Logo */}
         <Link to="/" onClick={closeMobile}>
           <img
             src={LogoName}
@@ -79,19 +89,24 @@ export default function Header() {
           />
         </Link>
 
-        {/* Menu Desktop */}
         <nav className="hidden md:flex gap-6 text-sm">
           <Link to="/" className="text-white/80 hover:text-white">
-            Início
+            Inicio
           </Link>
           <Link to="/sobre" className="text-white/80 hover:text-white">
-            Sobre Nós
+            Sobre Nos
           </Link>
           <Link to="/social" className="text-white/80 hover:text-white">
             Social
           </Link>
+          <Link to="/cis" className="text-white/80 hover:text-white">
+            CIs
+          </Link>
+          <Link to="/devocional" className="text-white/80 hover:text-white">
+            Devocional
+          </Link>
           <Link to="/sermoes" className="text-white/80 hover:text-white">
-            Sermões
+            Sermoes
           </Link>
           <Link to="/eventos" className="text-white/80 hover:text-white">
             Eventos
@@ -101,9 +116,7 @@ export default function Header() {
           </Link>
         </nav>
 
-        {/* Ações */}
         <div className="flex items-center gap-3">
-          {/* Botão Mobile */}
           <button
             className="md:hidden text-white"
             onClick={() => setMobileOpen(!mobileOpen)}
@@ -112,28 +125,37 @@ export default function Header() {
             {mobileOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
 
-          {/* Avatar */}
           <Dropdown items={menuItems} align="end">
-            <Avatar name={userName} size="sm" className="cursor-pointer" />
+            <Avatar
+              name={userName}
+              src={user?.profileImage}
+              size="sm"
+              className="cursor-pointer"
+            />
           </Dropdown>
         </div>
       </div>
 
-      {/* Menu Mobile */}
       {mobileOpen && (
         <nav className="md:hidden bg-[#0f1115] border-t border-white/10">
           <div className="flex flex-col px-4 py-4 gap-4 text-sm">
             <Link to="/" onClick={closeMobile}>
-              Início
+              Inicio
             </Link>
             <Link to="/sobre" onClick={closeMobile}>
-              Sobre Nós
+              Sobre Nos
             </Link>
             <Link to="/social" onClick={closeMobile}>
               Social
             </Link>
+            <Link to="/cis" onClick={closeMobile}>
+              CIs
+            </Link>
+            <Link to="/devocional" onClick={closeMobile}>
+              Devocional
+            </Link>
             <Link to="/sermoes" onClick={closeMobile}>
-              Sermões
+              Sermoes
             </Link>
             <Link to="/eventos" onClick={closeMobile}>
               Eventos

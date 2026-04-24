@@ -4,13 +4,13 @@ import Logo from "../assets/logo.png";
 
 // eslint-disable-next-line react-refresh/only-export-components
 const ToastContent = ({ message }) => (
-  <div className="flex items-center gap-3">
-    <img src={Logo} alt="Casa Church" className="w-6 h-6 shrink-0" />
-    <div className="flex flex-col gap-1 flex-1">
-      <span className="font-semibold text-white text-[10px] uppercase tracking-wide">
+  <div className="cc-toast-content">
+    <img src={Logo} alt="Casa Church" className="cc-toast-logo" />
+    <div className="cc-toast-copy">
+      <span className="cc-toast-brand">
         Casa Church
       </span>
-      <span className="text-white/90 text-[12px] leading-tight">{message}</span>
+      <span className="cc-toast-message">{message}</span>
     </div>
   </div>
 );

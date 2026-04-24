@@ -1,30 +1,56 @@
 import { useMemo, useState } from "react";
 import { Heart, MessageCircle, Trash2 } from "lucide-react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import Avatar from "./Avatar";
 import Button from "./Button";
-import {
-  createLike,
-  deleteLike,
-  findAllLikes,
-} from "../services/likes/likesService";
+import { createLike, deleteLike } from "../services/likes/likesService";
 import {
   createComment,
-  findAllComments,
   deleteComment,
+  findAllComments,
 } from "../services/comments/commentsService";
 import { deletePost } from "../services/posts/postsService";
-import { toastSuccess, toastError } from "../utils/toastHelper";
+import { toastError, toastSuccess } from "../utils/toastHelper";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { jwtDecode } from "jwt-decode";
+
+function updatePostsFeedCache(queryClient, postId, updater) {
+  queryClient.setQueryData(["posts"], (current) => {
+    if (!current?.pages) return current;
+
+    return {
+      ...current,
+      pages: current.pages.map((page) => ({
+        ...page,
+        posts: page.posts.map((currentPost) =>
+          String(currentPost.id) === String(postId)
+            ? updater(currentPost)
+            : currentPost
+        ),
+      })),
+    };
+  });
+}
+
+function normalizeComments(commentsRaw) {
+  if (!commentsRaw) return [];
+  if (Array.isArray(commentsRaw.posts)) return commentsRaw.posts;
+  if (Array.isArray(commentsRaw.comments)) return commentsRaw.comments;
+  if (Array.isArray(commentsRaw.data)) return commentsRaw.data;
+  if (Array.isArray(commentsRaw)) return commentsRaw;
+  return [];
+}
 
 export default function Post({ post, onDelete, now }) {
   const [showComments, setShowComments] = useState(false);
   const [commentContent, setCommentContent] = useState("");
   const queryClient = useQueryClient();
 
-  // 🔐 Usuário logado (ID vem do token)
   const storedUser = JSON.parse(localStorage.getItem("user"));
   const currentUserId = useMemo(() => {
     if (!storedUser?.token) return undefined;
@@ -32,9 +58,12 @@ export default function Post({ post, onDelete, now }) {
     return decoded.sub || decoded.id || decoded.userId;
   }, [storedUser?.token]);
 
-  /* ============================
-     TIME FORMAT
-     ============================ */
+  const social = post.social ?? {};
+  const likesCount = social.likesCount ?? 0;
+  const commentsCount = social.commentsCount ?? 0;
+  const currentUserLikeId = social.currentUserLikeId ?? null;
+  const isLiked = Boolean(social.isLikedByCurrentUser || currentUserLikeId);
+
   const formatTime = (date) =>
     formatDistanceToNow(new Date(date), {
       addSuffix: true,
@@ -42,38 +71,41 @@ export default function Post({ post, onDelete, now }) {
       baseDate: new Date(now),
     });
 
-  /* ============================
-     LIKES
-     ============================ */
   const {
-    data: likesRaw,
+    data: commentsRaw,
+    isLoading: isLoadingComments,
+    isError: isCommentsError,
   } = useQuery({
-    queryKey: ["likes", post.id],
-    queryFn: () => findAllLikes({ postId: post.id, limit: 100 }),
-    staleTime: 0,
-    refetchOnMount: "always",
+    queryKey: ["comments", post.id],
+    queryFn: () => findAllComments({ postId: post.id, limit: 100 }),
+    enabled: showComments,
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
   });
 
-  const likes = useMemo(() => {
-    // Aceita formatos diferentes
-    if (!likesRaw) return [];
-    if (Array.isArray(likesRaw)) return likesRaw;
-    if (Array.isArray(likesRaw.likes)) return likesRaw.likes;
-    if (Array.isArray(likesRaw.data?.likes)) return likesRaw.data.likes;
-    if (Array.isArray(likesRaw.rows)) return likesRaw.rows;
-    return [];
-  }, [likesRaw]);
-
-  const userLike = likes.find(
-    (like) => String(like.userId) === String(currentUserId)
+  const comments = useMemo(
+    () => normalizeComments(commentsRaw),
+    [commentsRaw]
   );
-  const isLiked = !!userLike;
-  const likesCount = likes.length;
 
   const likeMutation = useMutation({
     mutationFn: createLike,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["likes", post.id] });
+    onSuccess: (response) => {
+      const createdLikeId = response?.like?.id ?? null;
+
+      updatePostsFeedCache(queryClient, post.id, (currentPost) => {
+        const currentSocial = currentPost.social ?? {};
+
+        return {
+          ...currentPost,
+          social: {
+            ...currentSocial,
+            likesCount: (currentSocial.likesCount ?? 0) + 1,
+            currentUserLikeId: createdLikeId,
+            isLikedByCurrentUser: true,
+          },
+        };
+      });
     },
     onError: (error) => {
       toastError(error?.response?.data?.message || "Erro ao curtir");
@@ -83,7 +115,19 @@ export default function Post({ post, onDelete, now }) {
   const unlikeMutation = useMutation({
     mutationFn: deleteLike,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["likes", post.id] });
+      updatePostsFeedCache(queryClient, post.id, (currentPost) => {
+        const currentSocial = currentPost.social ?? {};
+
+        return {
+          ...currentPost,
+          social: {
+            ...currentSocial,
+            likesCount: Math.max((currentSocial.likesCount ?? 1) - 1, 0),
+            currentUserLikeId: null,
+            isLikedByCurrentUser: false,
+          },
+        };
+      });
     },
     onError: (error) => {
       toastError(error?.response?.data?.message || "Erro ao descurtir");
@@ -96,45 +140,13 @@ export default function Post({ post, onDelete, now }) {
       return;
     }
 
-    if (isLiked && userLike?.id) {
-      unlikeMutation.mutate(userLike.id);
-    } else {
-      likeMutation.mutate({ postId: post.id });
+    if (isLiked && currentUserLikeId) {
+      unlikeMutation.mutate(currentUserLikeId);
+      return;
     }
+
+    likeMutation.mutate({ postId: post.id });
   };
-
-  /* ============================
-     COMMENTS
-     ============================ */
-
-  const {
-    data: commentsRaw,
-    isLoading: isLoadingComments,
-    isError: isCommentsError,
-    refetch: refetchComments,
-  } = useQuery({
-    queryKey: ["comments", post.id],
-    queryFn: () => findAllComments({ postId: post.id, limit: 100 }),
-    staleTime: 0,
-    refetchOnMount: "always",
-    refetchOnWindowFocus: true,
-  });
-
-  // 🔥 Normaliza QUALQUER formato de retorno
-const comments = useMemo(() => {
-  if (!commentsRaw) return [];
-
-  // FORMATO REAL DA API
-  if (Array.isArray(commentsRaw.posts)) return commentsRaw.posts;
-
-  // fallback (caso mude no futuro)
-  if (Array.isArray(commentsRaw.comments)) return commentsRaw.comments;
-  if (Array.isArray(commentsRaw.data)) return commentsRaw.data;
-
-  return [];
-}, [commentsRaw]);
-
-  const commentsCount = comments.length;
 
   const commentMutation = useMutation({
     mutationFn: createComment,
@@ -142,11 +154,21 @@ const comments = useMemo(() => {
       setCommentContent("");
       toastSuccess("Comentário adicionado!");
 
+      updatePostsFeedCache(queryClient, post.id, (currentPost) => {
+        const currentSocial = currentPost.social ?? {};
+
+        return {
+          ...currentPost,
+          social: {
+            ...currentSocial,
+            commentsCount: (currentSocial.commentsCount ?? 0) + 1,
+          },
+        };
+      });
+
       await queryClient.invalidateQueries({
         queryKey: ["comments", post.id],
       });
-
-      refetchComments();
     },
     onError: (error) => {
       toastError(error?.response?.data?.message || "Erro ao comentar");
@@ -157,10 +179,22 @@ const comments = useMemo(() => {
     mutationFn: deleteComment,
     onSuccess: async () => {
       toastSuccess("Comentário excluído!");
+
+      updatePostsFeedCache(queryClient, post.id, (currentPost) => {
+        const currentSocial = currentPost.social ?? {};
+
+        return {
+          ...currentPost,
+          social: {
+            ...currentSocial,
+            commentsCount: Math.max((currentSocial.commentsCount ?? 1) - 1, 0),
+          },
+        };
+      });
+
       await queryClient.invalidateQueries({
         queryKey: ["comments", post.id],
       });
-      refetchComments();
     },
     onError: (error) => {
       toastError(error?.response?.data?.message || "Erro ao excluir comentário");
@@ -184,9 +218,6 @@ const comments = useMemo(() => {
     }
   };
 
-  /* ============================
-     DELETE POST
-     ============================ */
   const deletePostMutation = useMutation({
     mutationFn: deletePost,
     onSuccess: () => {
@@ -205,15 +236,14 @@ const comments = useMemo(() => {
     }
   };
 
-  /* ============================
-     RENDER
-     ============================ */
-
   return (
     <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-4">
-      {/* Header */}
       <div className="flex items-start gap-3 mb-3">
-        <Avatar name={post.user?.name || "Usuário"} size="md" />
+        <Avatar
+          name={post.user?.name || "Usuário"}
+          src={post.user?.profileImage}
+          size="md"
+        />
         <div className="flex-1">
           <div className="flex items-center justify-between">
             <div>
@@ -236,12 +266,10 @@ const comments = useMemo(() => {
         </div>
       </div>
 
-      {/* Conteúdo */}
       <p className="text-white/90 mb-4 whitespace-pre-wrap break-words">
         {post.content}
       </p>
 
-      {/* Ações */}
       <div className="flex items-center gap-4 pt-3 border-t border-white/10">
         <button
           onClick={handleLike}
@@ -255,7 +283,7 @@ const comments = useMemo(() => {
         </button>
 
         <button
-          onClick={() => setShowComments((v) => !v)}
+          onClick={() => setShowComments((value) => !value)}
           className="flex items-center gap-2 text-sm text-white/60 hover:text-blue-500"
         >
           <MessageCircle size={18} />
@@ -263,17 +291,17 @@ const comments = useMemo(() => {
         </button>
       </div>
 
-      {/* Comentários */}
       {showComments && (
         <div className="mt-4 pt-4 border-t border-white/10 space-y-4">
-          {/* Novo comentário */}
           <div className="flex gap-2">
             <input
               type="text"
               placeholder="Escreva um comentário..."
               value={commentContent}
-              onChange={(e) => setCommentContent(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleComment()}
+              onChange={(event) => setCommentContent(event.target.value)}
+              onKeyDown={(event) =>
+                event.key === "Enter" && handleComment()
+              }
               className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white"
               maxLength={300}
             />
@@ -287,7 +315,6 @@ const comments = useMemo(() => {
             />
           </div>
 
-          {/* Estado de loading/erro */}
           {isLoadingComments ? (
             <p className="text-sm text-white/40 text-center py-4">
               Carregando comentários...
@@ -299,7 +326,11 @@ const comments = useMemo(() => {
           ) : comments.length > 0 ? (
             comments.map((comment) => (
               <div key={comment.id} className="flex gap-3">
-                <Avatar name={comment.user?.name || "Usuário"} size="sm" />
+                <Avatar
+                  name={comment.user?.name || "Usuário"}
+                  src={comment.user?.profileImage}
+                  size="sm"
+                />
                 <div className="flex-1 bg-white/5 rounded-lg p-3">
                   <div className="flex items-center justify-between mb-1">
                     <p className="text-sm font-semibold text-white">

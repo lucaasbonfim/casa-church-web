@@ -11,6 +11,7 @@ import Input from "../components/Input";
 import Button from "../components/Button";
 
 import { login } from "../services/auth/authService";
+import { setStoredUser } from "../utils/authStorage";
 
 // assets
 import Logo from "../assets/logo.png";
@@ -36,14 +37,12 @@ export default function Login() {
   const onSubmit = async (formValues) => {
     try {
       const res = await login(formValues);
-      localStorage.setItem(
-        "user",
-        JSON.stringify({
-          token: res?.token,
-          name: res?.name || "",
-          email: res?.email || "",
-        })
-      );
+      setStoredUser({
+        token: res?.token,
+        name: res?.name || "",
+        email: res?.email || "",
+        profileImage: res?.profileImage || "",
+      });
       // eslint-disable-next-line react-hooks/immutability
       axios.defaults.headers.common["Authorization"] = res?.token
         ? res.token

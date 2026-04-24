@@ -4,6 +4,7 @@ import Loader from "./Loader";
 export default function Button({
   children,
   onClick,
+  type = "button",
   style = 1,
   size = "md",
   disabled = false,
@@ -108,6 +109,7 @@ const iconOnlySizes = {
 
   return (
     <button
+      type={type}
       className={`${baseStyles} ${variantClass} ${sizeClass} ${widthClass} ${className}`}
       onClick={onClick}
       disabled={disabled || loading}

@@ -17,12 +17,16 @@ export default function ToastProvider() {
       theme="dark"
       closeButton={CloseButton}
       icon={false}
-      style={{ zIndex: 9999, width: "400px", maxWidth: "90vw" }}
+      className="cc-toast-container"
+      toastClassName="cc-toast"
+      bodyClassName="cc-toast-body"
+      progressClassName="cc-toast-progress"
+      style={{ zIndex: 9999 }}
       toastStyle={{
         background: "#0f1115",
         border: "1px solid rgba(255, 255, 255, 0.1)",
-        borderRadius: "0.75rem",
-        padding: "1rem",
+        borderRadius: "1rem",
+        padding: "0.875rem 0.9375rem",
         minHeight: "auto",
         boxShadow: "0 10px 40px rgba(0, 0, 0, 0.3)",
         cursor: "default",

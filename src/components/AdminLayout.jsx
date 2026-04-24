@@ -1,8 +1,10 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
+  House,
   Calendar,
   Book,
+  BookOpenText,
   GraduationCap,
   MessageSquare,
   Users,
@@ -26,12 +28,14 @@ export default function AdminLayout({ children }) {
 
   const menuItems = [
     { path: "/admin/dashboard", icon: LayoutDashboard, label: "Dashboard" },
+    { path: "/admin/inicio", icon: House, label: "Pagina inicial" },
     { path: "/admin/eventos", icon: Calendar, label: "Eventos" },
+    { path: "/admin/devocionais", icon: BookOpenText, label: "Devocionais" },
     { path: "/admin/sermoes", icon: Book, label: "Sermões" },
     { path: "/admin/licoes", icon: GraduationCap, label: "Lições" },
     { path: "/admin/posts", icon: MessageSquare, label: "Posts" },
     { path: "/admin/usuarios", icon: Users, label: "Usuários" },
-    { path: "/admin/locais", icon: MapPin, label: "Locais" },
+    { path: "/admin/cis", icon: MapPin, label: "CIs" },
     { path: "/admin/contatos", icon: Mail, label: "Mensagens" },
     { path: "/admin/doacoes", icon: DollarSign, label: "Doações" },
   ];
@@ -57,7 +61,7 @@ export default function AdminLayout({ children }) {
       >
         {/* Logo */}
         <div className="h-16 flex items-center justify-between px-4 border-b border-white/10">
-          <Link to="/admin/dashboard" onClick={closeSidebar}>
+          <Link to="/" onClick={closeSidebar}>
             <img
               src={LogoName}
               alt="Logo Casa Church"

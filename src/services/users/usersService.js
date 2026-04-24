@@ -27,7 +27,7 @@ export async function findUserById(id) {
 
 export async function updateUser(id, body) {
   const { data } = await axios.patch(`${API_URL}/users/${id}`, body);
-  return data;
+  return data?.user ?? data;
 }
 
 export async function deleteUser(id) {

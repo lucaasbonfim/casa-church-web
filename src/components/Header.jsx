@@ -113,6 +113,9 @@ export default function Header() {
           <Link to="/eventos" className="text-white/80 hover:text-white">
             Eventos
           </Link>
+          <Link to="/galeria" className="text-white/80 hover:text-white">
+            Galeria
+          </Link>
           <Link to="/doacoes" className="text-white/80 hover:text-white">
             Ofertas
           </Link>
@@ -174,6 +177,9 @@ export default function Header() {
             </Link>
             <Link to="/eventos" onClick={closeMobile}>
               Eventos
+            </Link>
+            <Link to="/galeria" onClick={closeMobile}>
+              Galeria
             </Link>
             <Link to="/doacoes" onClick={closeMobile}>
               Ofertas

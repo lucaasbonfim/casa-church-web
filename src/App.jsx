@@ -23,12 +23,14 @@ import AdminContacts from "./containers/admin/AdminContacts.jsx";
 import AdminLessons from "./containers/admin/AdminLessons.jsx";
 import AdminPosts from "./containers/admin/AdminPosts.jsx";
 import AdminUsers from "./containers/admin/AdminUsers.jsx";
+import AdminActivities from "./containers/admin/AdminActivities.jsx";
 import Sermons from "./containers/Sermons.jsx";
 import Lessons from "./containers/Lessons.jsx";
 import Lesson from "./containers/Lesson.jsx";
 import About from "./containers/About.jsx";
 import Profile from "./containers/Profile.jsx";
 import Donations from "./containers/Donations.jsx";
+import Gallery from "./containers/Gallery.jsx";
 import EmailConfirmation from "./containers/EmailConfirmation.jsx";
 import UnderConstruction from "./containers/UnderConstruction";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
@@ -90,6 +92,7 @@ export default function App() {
           <Route path="/doacoes" element={<Donations />} />
           <Route path="/oferta" element={<Donations />} />
           <Route path="/ofertas" element={<Donations />} />
+          <Route path="/galeria" element={<Gallery />} />
         </Route>
 
         <Route element={<ProtectedRoute />}>
@@ -109,6 +112,7 @@ export default function App() {
           <Route path="/admin/licoes" element={<AdminLessons />} />
           <Route path="/admin/posts" element={<AdminPosts />} />
           <Route path="/admin/usuarios" element={<AdminUsers />} />
+          <Route path="/admin/atividades" element={<AdminActivities />} />
           <Route
             path="/admin/doacoes"
             element={<AdminPageContent initialSlug="donations" />}

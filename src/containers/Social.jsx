@@ -1,13 +1,16 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useEffect, useState, useRef } from "react";
+import { Link } from "react-router-dom";
 import CreatePost from "../components/CreatePost";
 import Post from "../components/Post";
 import Loader from "../components/Loader";
 import { findAllPosts } from "../services/posts/postsService";
+import { hasValidStoredSession } from "../utils/authStorage";
 
 const POSTS_PER_PAGE = 10;
 
 export default function Social() {
+  const isMember = hasValidStoredSession();
   const [now, setNow] = useState(() => Date.now());
   const loadMoreRef = useRef(null);
 
@@ -43,6 +46,7 @@ export default function Social() {
       }
       return undefined;
     },
+    enabled: isMember,
   });
 
   // 📦 Junta todos os posts carregados
@@ -65,6 +69,42 @@ export default function Social() {
 
     return () => observer.disconnect();
   }, [fetchNextPage, hasNextPage]);
+
+  if (!isMember) {
+    return (
+      <div className="min-h-screen bg-[#0f1115] text-white">
+        <main className="mx-auto flex min-h-[70vh] max-w-3xl items-center px-4 py-12">
+          <section className="w-full rounded-2xl border border-white/10 bg-white/5 p-8 text-center backdrop-blur-sm">
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-white/45">
+              Area de membros
+            </p>
+            <h1 className="mt-4 text-3xl font-bold md:text-4xl">
+              Entre para participar da comunidade
+            </h1>
+            <p className="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-white/65 md:text-base">
+              O Social e um espaco para membros compartilharem momentos,
+              testemunhos e caminharem mais perto da Casa Church.
+            </p>
+
+            <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
+              <Link
+                to="/registrar"
+                className="rounded-lg bg-white px-5 py-3 text-sm font-semibold text-black transition hover:bg-gray-100"
+              >
+                Criar conta
+              </Link>
+              <Link
+                to="/login"
+                className="rounded-lg bg-white/10 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/20"
+              >
+                Ja sou membro
+              </Link>
+            </div>
+          </section>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#0f1115] text-white">

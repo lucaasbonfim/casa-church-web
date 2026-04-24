@@ -1,152 +1,95 @@
+import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
+import { findPageContent } from "../services/pageContent/pageContentService";
+
+const defaultContent = {
+  heroTitle: "Sobre a Casa Church",
+  heroSubtitle:
+    "Mais do que uma igreja, somos uma comunidade construida sobre fe, conexao e proposito.",
+  introTitle: "Quem somos",
+  introText:
+    "A Casa Church nasceu com o desejo de ser um lugar onde pessoas se sintam em casa. Acreditamos em uma fe viva, pratica e acessivel, que se expressa no cuidado com o proximo, na comunhao e na transformacao de vidas.",
+  cards: [
+    {
+      title: "Nossa visao",
+      text: "Construir uma comunidade solida, acolhedora e relevante para o tempo em que vivemos.",
+    },
+    {
+      title: "Nosso proposito",
+      text: "Amar pessoas, ensinar principios que transformam vidas e caminhar juntos em fe e crescimento.",
+    },
+    {
+      title: "Nossa essencia",
+      text: "Simplicidade, conexao, servico e compromisso com aquilo em que acreditamos.",
+    },
+  ],
+  sectionTitle: "Igreja alem das paredes",
+  sectionText:
+    "Entendemos que a igreja nao se limita a um espaco fisico. Por isso, a Casa Church tambem vive no digital, utilizando a tecnologia como uma ponte para alcancar, ensinar e conectar pessoas.",
+  ctaTitle: "Quer caminhar com a gente?",
+  ctaText: "Entre em contato e saiba mais sobre a Casa Church.",
+  ctaButtonText: "Fale com a gente",
+  ctaButtonLink: "/contatos",
+};
 
 export default function About() {
   const navigate = useNavigate();
+  const { data } = useQuery({
+    queryKey: ["page-content", "about"],
+    queryFn: () => findPageContent("about"),
+  });
+  const content = { ...defaultContent, ...(data || {}) };
+  const cards = content.cards?.length ? content.cards : defaultContent.cards;
 
   return (
-    <div className="min-h-screen bg-[#0f1115] text-white px-4 py-12">
-      <div className="max-w-6xl mx-auto space-y-16">
-        {/* Header */}
+    <div className="min-h-screen bg-[#0f1115] px-4 py-12 text-white">
+      <div className="mx-auto max-w-6xl space-y-16">
         <div className="max-w-3xl">
-          <h1 className="text-5xl font-bold mb-4">Sobre a Casa Church</h1>
-          <p className="text-white/60 text-lg">
-            Mais do que uma igreja, somos uma comunidade construída sobre fé,
-            conexão e propósito.
+          <h1 className="mb-4 text-5xl font-bold">{content.heroTitle}</h1>
+          <p className="text-lg text-white/60">{content.heroSubtitle}</p>
+        </div>
+
+        <section className="rounded-2xl border border-white/10 bg-white/5 p-8 backdrop-blur-sm">
+          <h2 className="mb-4 text-2xl font-semibold">{content.introTitle}</h2>
+          <p className="max-w-4xl leading-relaxed text-white/70">
+            {content.introText}
           </p>
-        </div>
+        </section>
 
-        {/* Quem somos */}
-        <div
-          className="
-            rounded-2xl
-            border border-white/10
-            bg-white/5
-            backdrop-blur-sm
-            p-8
-          "
-        >
-          <h2 className="text-2xl font-semibold mb-4">Quem somos</h2>
-          <p className="text-white/70 leading-relaxed max-w-4xl">
-            A Casa Church nasceu com o desejo de ser um lugar onde pessoas se
-            sintam em casa. Acreditamos em uma fé viva, prática e acessível, que
-            se expressa no cuidado com o próximo, na comunhão e na transformação
-            de vidas.
-          </p>
-        </div>
+        <section className="grid gap-8 md:grid-cols-3">
+          {cards.map((card, index) => (
+            <div
+              key={`${card.title}-${index}`}
+              className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-sm"
+            >
+              <h3 className="mb-3 text-xl font-semibold">{card.title}</h3>
+              <p className="text-white/70">{card.text}</p>
+            </div>
+          ))}
+        </section>
 
-        {/* Cards */}
-        <div className="grid md:grid-cols-3 gap-8">
-          <div
-            className="
-              rounded-2xl
-              border border-white/10
-              bg-white/5
-              backdrop-blur-sm
-              p-6
-            "
-          >
-            <h3 className="text-xl font-semibold mb-3">Nossa visão</h3>
-            <p className="text-white/70">
-              Construir uma comunidade sólida, acolhedora e relevante para o
-              tempo em que vivemos.
-            </p>
-          </div>
-
-          <div
-            className="
-              rounded-2xl
-              border border-white/10
-              bg-white/5
-              backdrop-blur-sm
-              p-6
-            "
-          >
-            <h3 className="text-xl font-semibold mb-3">Nosso propósito</h3>
-            <p className="text-white/70">
-              Amar pessoas, ensinar princípios que transformam vidas e caminhar
-              juntos em fé e crescimento.
-            </p>
-          </div>
-
-          <div
-            className="
-              rounded-2xl
-              border border-white/10
-              bg-white/5
-              backdrop-blur-sm
-              p-6
-            "
-          >
-            <h3 className="text-xl font-semibold mb-3">Nossa essência</h3>
-            <p className="text-white/70">
-              Simplicidade, conexão, serviço e compromisso com aquilo em que
-              acreditamos.
-            </p>
-          </div>
-        </div>
-
-        {/* Igreja além das paredes */}
-        <div
-          className="
-            rounded-2xl
-            border border-white/10
-            bg-white/5
-            backdrop-blur-sm
-            p-8
-          "
-        >
-          <h2 className="text-2xl font-semibold mb-4">
-            Igreja além das paredes
+        <section className="rounded-2xl border border-white/10 bg-white/5 p-8 backdrop-blur-sm">
+          <h2 className="mb-4 text-2xl font-semibold">
+            {content.sectionTitle}
           </h2>
-          <p className="text-white/70 leading-relaxed max-w-4xl">
-            Entendemos que a igreja não se limita a um espaço físico. Por isso, a
-            Casa Church também vive no digital, utilizando a tecnologia como uma
-            ponte para alcançar, ensinar e conectar pessoas.
+          <p className="max-w-4xl leading-relaxed text-white/70">
+            {content.sectionText}
           </p>
-        </div>
+        </section>
 
-        {/* CTA */}
-        <div
-          className="
-            rounded-2xl
-            border border-white/10
-            bg-white/5
-            backdrop-blur-sm
-            p-8
-            flex
-            flex-col
-            md:flex-row
-            items-start
-            md:items-center
-            justify-between
-            gap-6
-          "
-        >
+        <section className="flex flex-col items-start justify-between gap-6 rounded-2xl border border-white/10 bg-white/5 p-8 backdrop-blur-sm md:flex-row md:items-center">
           <div>
-            <h3 className="text-2xl font-semibold mb-2">
-              Quer caminhar com a gente?
-            </h3>
-            <p className="text-white/60">
-              Entre em contato e saiba mais sobre a Casa Church.
-            </p>
+            <h3 className="mb-2 text-2xl font-semibold">{content.ctaTitle}</h3>
+            <p className="text-white/60">{content.ctaText}</p>
           </div>
 
           <button
-            onClick={() => navigate("/contatos")}
-            className="
-              px-6
-              py-3
-              rounded-xl
-              bg-white/10
-              hover:bg-white/20
-              transition
-              text-white
-              font-medium
-            "
+            onClick={() => navigate(content.ctaButtonLink || "/contatos")}
+            className="rounded-xl bg-white/10 px-6 py-3 font-medium text-white transition hover:bg-white/20"
           >
-            Fale com a gente
+            {content.ctaButtonText}
           </button>
-        </div>
+        </section>
       </div>
     </div>
   );

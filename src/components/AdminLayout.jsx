@@ -11,6 +11,7 @@ import {
   MapPin,
   Mail,
   DollarSign,
+  FileText,
   LogOut,
   Menu,
   X,
@@ -29,6 +30,7 @@ export default function AdminLayout({ children }) {
   const menuItems = [
     { path: "/admin/dashboard", icon: LayoutDashboard, label: "Dashboard" },
     { path: "/admin/inicio", icon: House, label: "Pagina inicial" },
+    { path: "/admin/paginas", icon: FileText, label: "Paginas" },
     { path: "/admin/eventos", icon: Calendar, label: "Eventos" },
     { path: "/admin/devocionais", icon: BookOpenText, label: "Devocionais" },
     { path: "/admin/sermoes", icon: Book, label: "Sermões" },
@@ -74,8 +76,7 @@ export default function AdminLayout({ children }) {
           <button
             onClick={closeSidebar}
             className="lg:hidden p-2 hover:bg-white/10 rounded-lg"
-          >
-          </button>
+          ></button>
         </div>
 
         {/* Menu */}

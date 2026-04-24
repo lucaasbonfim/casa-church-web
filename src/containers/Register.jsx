@@ -52,8 +52,11 @@ export default function Register() {
       };
 
       const { data } = await create(createUserData);
-      toastSuccess(data?.message || "Conta criada com sucesso");
+      toastSuccess(
+        data?.message || "Conta criada. Confira seu email para confirmar."
+      );
       reset();
+      navigate(`/confirmar-email?email=${encodeURIComponent(values.email)}`);
 
       return data;
     } catch (error) {

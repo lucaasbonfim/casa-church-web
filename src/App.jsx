@@ -6,6 +6,8 @@ import Events from "./containers/Events.jsx";
 import Event from "./containers/Event.jsx";
 import Login from "./containers/Login.jsx";
 import Register from "./containers/Register.jsx";
+import ForgotPassword from "./containers/ForgotPassword.jsx";
+import ResetPassword from "./containers/ResetPassword.jsx";
 import Contacts from "./containers/Contacts.jsx";
 import Social from "./containers/Social.jsx";
 import ChurchHouses from "./containers/ChurchHouses.jsx";
@@ -16,20 +18,25 @@ import AdminSermons from "./containers/admin/AdminSermons";
 import AdminChurchHouses from "./containers/admin/AdminChurchHouses.jsx";
 import AdminDevotionals from "./containers/admin/AdminDevotionals.jsx";
 import AdminHomeContent from "./containers/admin/AdminHomeContent.jsx";
+import AdminPageContent from "./containers/admin/AdminPageContent.jsx";
+import AdminContacts from "./containers/admin/AdminContacts.jsx";
+import AdminLessons from "./containers/admin/AdminLessons.jsx";
+import AdminPosts from "./containers/admin/AdminPosts.jsx";
+import AdminUsers from "./containers/admin/AdminUsers.jsx";
 import Sermons from "./containers/Sermons.jsx";
 import Lessons from "./containers/Lessons.jsx";
 import Lesson from "./containers/Lesson.jsx";
 import About from "./containers/About.jsx";
 import Profile from "./containers/Profile.jsx";
+import Donations from "./containers/Donations.jsx";
+import EmailConfirmation from "./containers/EmailConfirmation.jsx";
 import UnderConstruction from "./containers/UnderConstruction";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import PublicRoute from "./components/PublicRoute.jsx";
 import ToastProvider from "./components/ToastProvider.jsx";
 import AdminRoute from "./components/AdminRoute";
-import {
-  clearStoredUser,
-  getStoredToken,
-} from "./utils/authStorage";
+import SiteLayout from "./components/SiteLayout.jsx";
+import { clearStoredUser, getStoredToken } from "./utils/authStorage";
 
 function syncAxiosAuthorizationHeader() {
   const token = getStoredToken();
@@ -54,7 +61,7 @@ export default function App() {
         }
 
         return Promise.reject(error);
-      }
+      },
     );
 
     return () => {
@@ -65,7 +72,7 @@ export default function App() {
   return (
     <>
       <Routes>
-        <Route element={<ProtectedRoute />}>
+        <Route element={<SiteLayout />}>
           <Route path="/" element={<Home />} />
           <Route path="/eventos" element={<Events />} />
           <Route path="/evento/:id" element={<Event />} />
@@ -80,16 +87,32 @@ export default function App() {
             element={<Lesson />}
           />
           <Route path="/sobre" element={<About />} />
+          <Route path="/doacoes" element={<Donations />} />
+          <Route path="/oferta" element={<Donations />} />
+          <Route path="/ofertas" element={<Donations />} />
+        </Route>
+
+        <Route element={<ProtectedRoute />}>
           <Route path="/perfil" element={<Profile />} />
         </Route>
+        <Route path="/confirmar-email" element={<EmailConfirmation />} />
 
         <Route element={<AdminRoute />}>
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
           <Route path="/admin/inicio" element={<AdminHomeContent />} />
+          <Route path="/admin/paginas" element={<AdminPageContent />} />
           <Route path="/admin/eventos" element={<AdminEvents />} />
           <Route path="/admin/devocionais" element={<AdminDevotionals />} />
           <Route path="/admin/sermoes" element={<AdminSermons />} />
           <Route path="/admin/cis" element={<AdminChurchHouses />} />
+          <Route path="/admin/contatos" element={<AdminContacts />} />
+          <Route path="/admin/licoes" element={<AdminLessons />} />
+          <Route path="/admin/posts" element={<AdminPosts />} />
+          <Route path="/admin/usuarios" element={<AdminUsers />} />
+          <Route
+            path="/admin/doacoes"
+            element={<AdminPageContent initialSlug="donations" />}
+          />
           <Route
             path="/admin/*"
             element={
@@ -104,6 +127,8 @@ export default function App() {
         <Route element={<PublicRoute />}>
           <Route path="/login" element={<Login />} />
           <Route path="/registrar" element={<Register />} />
+          <Route path="/esqueci-senha" element={<ForgotPassword />} />
+          <Route path="/redefinir-senha" element={<ResetPassword />} />
         </Route>
 
         <Route

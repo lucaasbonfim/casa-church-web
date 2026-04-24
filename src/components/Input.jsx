@@ -14,6 +14,7 @@ export default function Input({
   className = "",
   allowClear = false,
   onClear,
+  autoComplete,
 }) {
   const [showPassword, setShowPassword] = useState(false);
 
@@ -46,7 +47,8 @@ export default function Input({
           onChange={onChange}
           placeholder={placeholder}
           autoComplete={
-            isPassword ? "current-password" : isEmail ? "email" : "on"
+            autoComplete ||
+            (isPassword ? "current-password" : isEmail ? "email" : "on")
           }
           className={`w-full bg-white/5 border rounded-lg py-3 px-4 ${
             EffectiveIcon ? "pl-12" : ""

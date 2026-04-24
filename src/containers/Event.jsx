@@ -1,7 +1,10 @@
 import { MapPin, Calendar, Clock, Mail, Phone, ArrowLeft } from "lucide-react";
+import { Link } from "react-router-dom";
 import Button from "../components/Button";
+import { hasValidStoredSession } from "../utils/authStorage";
 
 export default function Event() {
+  const isMember = hasValidStoredSession();
   const churchImages = [
     "photo-1469022563149-aa64dbd37dae",
     "photo-1531573787031-e74ece2cf639",
@@ -89,9 +92,35 @@ export default function Event() {
                   </div>
                 </div>
 
-                <Button size="lg" className="w-full">
-                  Inscrever-se no Evento
-                </Button>
+                {isMember ? (
+                  <Button size="lg" className="w-full">
+                    Inscrever-se no Evento
+                  </Button>
+                ) : (
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+                    <h2 className="text-lg font-semibold">
+                      Quer se inscrever?
+                    </h2>
+                    <p className="mt-2 text-sm leading-relaxed text-white/65">
+                      Crie sua conta ou entre como membro para liberar a
+                      inscricao neste evento.
+                    </p>
+                    <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+                      <Link
+                        to="/registrar"
+                        className="rounded-lg bg-white px-4 py-2.5 text-center text-sm font-semibold text-black transition hover:bg-gray-100"
+                      >
+                        Criar conta
+                      </Link>
+                      <Link
+                        to="/login"
+                        className="rounded-lg bg-white/10 px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-white/20"
+                      >
+                        Entrar
+                      </Link>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -183,7 +212,16 @@ export default function Event() {
         <section className="max-w-7xl mx-auto px-4 py-16 border-t border-white/10">
           <div className="text-left">
             <h2 className="text-3xl font-bold mb-6">Pronto para participar?</h2>
-            <Button size="lg">Inscrever-se no Evento</Button>
+            {isMember ? (
+              <Button size="lg">Inscrever-se no Evento</Button>
+            ) : (
+              <Link
+                to="/registrar"
+                className="inline-flex rounded-lg bg-white px-6 py-3 text-base font-semibold text-black transition hover:bg-gray-100"
+              >
+                Criar conta para se inscrever
+              </Link>
+            )}
           </div>
         </section>
       </main>

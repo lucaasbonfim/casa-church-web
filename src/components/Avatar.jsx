@@ -1,8 +1,18 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 
-export default function Avatar({ name = "", size = "md", className = "" }) {
+export default function Avatar({
+  name = "",
+  src = "",
+  size = "md",
+  className = "",
+}) {
   const [initials, setInitials] = useState("");
   const [bgColor, setBgColor] = useState("bg-blue-500");
+  const [imageError, setImageError] = useState(false);
+
+  useEffect(() => {
+    setImageError(false);
+  }, [src]);
 
   useEffect(() => {
     try {
@@ -15,7 +25,6 @@ export default function Avatar({ name = "", size = "md", className = "" }) {
         if (nameParts.length >= 2) {
           const firstInitial = nameParts[0][0].toUpperCase();
           const lastInitial = nameParts[nameParts.length - 1][0].toUpperCase();
-          // eslint-disable-next-line react-hooks/set-state-in-effect
           setInitials(firstInitial + lastInitial);
         } else if (nameParts.length === 1) {
           setInitials(nameParts[0][0].toUpperCase());
@@ -23,7 +32,6 @@ export default function Avatar({ name = "", size = "md", className = "" }) {
           setInitials("?");
         }
 
-        // Gera cor consistente baseada no nome
         const hash = name.split("").reduce((acc, char) => {
           return char.charCodeAt(0) + ((acc << 5) - acc);
         }, 0);
@@ -54,16 +62,27 @@ export default function Avatar({ name = "", size = "md", className = "" }) {
     md: "w-10 h-10 text-sm",
     lg: "w-12 h-12 text-base",
     xl: "w-16 h-16 text-lg",
+    "2xl": "w-20 h-20 text-xl",
   };
 
   const sizeClass = sizeClasses[size] || sizeClasses.md;
+  const shouldShowImage = Boolean(src && !imageError);
 
   return (
     <div
-      className={`${sizeClass} ${bgColor} rounded-full flex items-center justify-center text-white font-semibold cursor-default select-none transition-transform ${className}`}
-      title={name || "Usuário"}
+      className={`${sizeClass} ${bgColor} rounded-full overflow-hidden flex items-center justify-center text-white font-semibold cursor-default select-none transition-transform ${className}`}
+      title={name || "Usuario"}
     >
-      {initials}
+      {shouldShowImage ? (
+        <img
+          src={src}
+          alt={name || "Usuario"}
+          className="w-full h-full object-cover"
+          onError={() => setImageError(true)}
+        />
+      ) : (
+        initials
+      )}
     </div>
   );
 }

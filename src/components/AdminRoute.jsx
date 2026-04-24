@@ -1,37 +1,30 @@
 import { Navigate, Outlet } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
+import {
+  clearStoredUser,
+  getStoredUser,
+  hasValidStoredSession,
+} from "../utils/authStorage";
 
 export default function AdminRoute() {
-  const userStr = localStorage.getItem("user");
-  
-  if (!userStr) {
+  if (!hasValidStoredSession()) {
+    clearStoredUser();
     return <Navigate to="/login" replace />;
   }
 
-  let user = null;
-  let decoded = null;
-  let isAdmin = false;
-  let hasError = false;
+  const user = getStoredUser();
 
-  
   try {
-    user = JSON.parse(userStr);
-    
-    if (user && user.token) {
-      decoded = jwtDecode(user.token);
-      isAdmin = decoded.role === "admin";
+    const decoded = jwtDecode(user.token);
+    const isAdmin = decoded.role === "admin";
+
+    if (!isAdmin) {
+      return <Navigate to="/" replace />;
     }
   } catch (error) {
     console.error("Erro ao verificar admin:", error);
-    hasError = true;
-  }
-
-  if (hasError || !user || !user.token) {
+    clearStoredUser();
     return <Navigate to="/login" replace />;
-  }
-
-  if (!isAdmin) {
-    return <Navigate to="/" replace />;
   }
 
   return <Outlet />;

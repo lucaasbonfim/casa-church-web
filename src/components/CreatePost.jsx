@@ -6,10 +6,11 @@ import Button from "./Button";
 import Avatar from "./Avatar";
 import { createPost } from "../services/posts/postsService";
 import { toastSuccess, toastError } from "../utils/toastHelper";
+import { getStoredUser } from "../utils/authStorage";
 
 export default function CreatePost({ onPostCreated }) {
   const [content, setContent] = useState("");
-  const user = JSON.parse(localStorage.getItem("user"));
+  const user = getStoredUser() || {};
 
   const createPostMutation = useMutation({
     mutationFn: createPost,
@@ -43,7 +44,7 @@ export default function CreatePost({ onPostCreated }) {
   return (
     <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-4">
       <div className="flex gap-3">
-        <Avatar name={user.name} size="md" />
+        <Avatar name={user.name} src={user.profileImage} size="md" />
         <div className="flex-1">
           <textarea
             placeholder="O que está acontecendo?"

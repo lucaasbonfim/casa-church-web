@@ -25,8 +25,16 @@ body,
 }
 
 body {
-  font-family: "Manrope", system-ui, -apple-system, Segoe UI, Roboto,
-    "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  font-family:
+    "Manrope",
+    system-ui,
+    -apple-system,
+    Segoe UI,
+    Roboto,
+    "Helvetica Neue",
+    Arial,
+    "Noto Sans",
+    sans-serif;
   color: var(--color-text);
   background: var(--color-bg);
 }
@@ -47,6 +55,35 @@ textarea {
 }
 a {
   text-decoration: none;
+}
+
+.cc-hide-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.cc-hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.ci-map .leaflet-left .leaflet-control-zoom {
+  display: none;
+}
+
+.ci-map .leaflet-top.leaflet-right {
+  top: 0.875rem;
+  right: 0.875rem;
+}
+
+.ci-map .leaflet-control-zoom {
+  border: 0;
+  overflow: hidden;
+  border-radius: 0.75rem;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.28);
+}
+
+.ci-map .leaflet-control-zoom a {
+  border: 0;
 }
 
 .Toastify__toast-container.cc-toast-container {

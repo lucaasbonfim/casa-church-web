@@ -35,9 +35,7 @@ import { getStoredUser, hasValidStoredSession } from "../utils/authStorage";
 import { toastError, toastSuccess } from "../utils/toastHelper";
 
 const PHOTO_PAGE_SIZE = 32;
-const MIN_PREVIEW_SCALE = 1;
-const MAX_PREVIEW_SCALE = 4;
-const SWIPE_THRESHOLD_PX = 70;
+const PREVIEW_SWIPE_THRESHOLD_PX = 64;
 
 function formatDate(date) {
   if (!date) return "-";
@@ -53,12 +51,6 @@ function formatDate(date) {
 
 function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
-}
-
-function getTouchDistance(touchA, touchB) {
-  const dx = touchA.clientX - touchB.clientX;
-  const dy = touchA.clientY - touchB.clientY;
-  return Math.sqrt(dx * dx + dy * dy);
 }
 
 function SelectMenu({ value, onChange, options, placeholder = "Selecionar" }) {
@@ -190,14 +182,14 @@ function DesktopContextMenu({
   const estimatedMenuHeight = 220;
   const left = Math.max(
     12,
-    Math.min(anchor?.x ?? viewport.width / 2, viewport.width - menuWidth - 12)
+    Math.min(anchor?.x ?? viewport.width / 2, viewport.width - menuWidth - 12),
   );
   const top = Math.max(
     12,
     Math.min(
       anchor?.y ?? viewport.height / 2,
-      viewport.height - estimatedMenuHeight - 12
-    )
+      viewport.height - estimatedMenuHeight - 12,
+    ),
   );
 
   return (
@@ -260,25 +252,24 @@ export default function Gallery() {
     width: typeof window !== "undefined" ? window.innerWidth : 0,
     height: typeof window !== "undefined" ? window.innerHeight : 0,
   }));
-  const [previewScale, setPreviewScale] = useState(1);
-  const [previewOffset, setPreviewOffset] = useState({ x: 0, y: 0 });
-  const [isPreviewInteracting, setIsPreviewInteracting] = useState(false);
 
   const longPressTimerRef = useRef(null);
   const longPressTriggeredRef = useRef(false);
   const previewFrameRef = useRef(null);
-  const previewGestureRef = useRef({
-    mode: "idle",
+  const previewJumpRafRef = useRef(null);
+  const previewWheelTimeoutRef = useRef(null);
+  const previewWheelLockedRef = useRef(false);
+  const previewDragRef = useRef({
+    pointerId: null,
     startX: 0,
     startY: 0,
-    swipeDx: 0,
-    swipeDy: 0,
-    startScale: 1,
-    startDistance: 0,
-    startOffsetX: 0,
-    startOffsetY: 0,
+    offsetX: 0,
+    offsetY: 0,
+    active: false,
   });
-  const lastTapRef = useRef(0);
+  const [previewDragOffset, setPreviewDragOffset] = useState(0);
+  const [isPreviewDragging, setIsPreviewDragging] = useState(false);
+  const [isPreviewJumping, setIsPreviewJumping] = useState(false);
 
   useEffect(() => {
     function handleResize() {
@@ -294,21 +285,18 @@ export default function Gallery() {
   }, []);
 
   useEffect(() => {
-    setPreviewScale(1);
-    setPreviewOffset({ x: 0, y: 0 });
-    setIsPreviewInteracting(false);
-    previewGestureRef.current = {
-      mode: "idle",
-      startX: 0,
-      startY: 0,
-      swipeDx: 0,
-      swipeDy: 0,
-      startScale: 1,
-      startDistance: 0,
-      startOffsetX: 0,
-      startOffsetY: 0,
+    return () => {
+      if (longPressTimerRef.current) {
+        clearTimeout(longPressTimerRef.current);
+      }
+      if (previewJumpRafRef.current) {
+        cancelAnimationFrame(previewJumpRafRef.current);
+      }
+      if (previewWheelTimeoutRef.current) {
+        clearTimeout(previewWheelTimeoutRef.current);
+      }
     };
-  }, [activePhotoIndex]);
+  }, []);
 
   const { data: foldersData, isLoading: loadingFolders } = useQuery({
     queryKey: ["gallery-folders"],
@@ -323,7 +311,7 @@ export default function Gallery() {
         label: `${folder.label} (${folder.count || 0})`,
       })) || []),
     ],
-    [foldersData]
+    [foldersData],
   );
 
   const {
@@ -350,7 +338,7 @@ export default function Gallery() {
 
   const photos = useMemo(
     () => (photosPages?.pages || []).flatMap((page) => page?.photos || []),
-    [photosPages]
+    [photosPages],
   );
 
   const uploadMutation = useMutation({
@@ -370,7 +358,7 @@ export default function Gallery() {
     },
     onError: (error) => {
       toastError(
-        error?.response?.data?.message || "Nao foi possivel enviar as fotos."
+        error?.response?.data?.message || "Nao foi possivel enviar as fotos.",
       );
     },
   });
@@ -391,7 +379,7 @@ export default function Gallery() {
     },
     onError: (error) => {
       toastError(
-        error?.response?.data?.message || "Nao foi possivel remover a foto."
+        error?.response?.data?.message || "Nao foi possivel remover a foto.",
       );
     },
   });
@@ -416,15 +404,43 @@ export default function Gallery() {
     },
     onError: (error) => {
       toastError(
-        error?.response?.data?.message || "Nao foi possivel remover a pasta."
+        error?.response?.data?.message || "Nao foi possivel remover a pasta.",
       );
     },
   });
 
   const activePhoto = activePhotoIndex >= 0 ? photos[activePhotoIndex] : null;
 
+  useEffect(() => {
+    if (!activePhoto) return undefined;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [activePhoto]);
+
+  useEffect(() => {
+    if (activePhotoIndex < 0 || typeof window === "undefined") return;
+
+    [activePhotoIndex - 1, activePhotoIndex, activePhotoIndex + 1].forEach(
+      (index) => {
+        const photo = photos[index];
+        if (!photo?.url) return;
+
+        const image = new Image();
+        image.decoding = "async";
+        image.src = photo.url;
+      },
+    );
+  }, [activePhotoIndex, photos]);
+
   const selectedFolderLabel = useMemo(() => {
-    const folder = foldersData?.folders?.find((item) => item.path === selectedFolder);
+    const folder = foldersData?.folders?.find(
+      (item) => item.path === selectedFolder,
+    );
     return folder?.label || "Todas as pastas";
   }, [foldersData, selectedFolder]);
 
@@ -436,7 +452,7 @@ export default function Gallery() {
     return uploadExistingFolder || selectedFolder || "";
   }, [selectedFolder, uploadExistingFolder, uploadFolderMode, uploadNewFolder]);
 
-  const actionSheetConfig = useMemo(() => {
+  const actionSheetConfig = (() => {
     if (!actionTarget) return null;
 
     if (actionTarget.type === "photo") {
@@ -444,16 +460,19 @@ export default function Gallery() {
       return {
         title: "Opcoes da foto",
         subtitle: `${photo?.folderLabel || "Geral"} • ${formatDate(
-          photo?.createdAt
+          photo?.createdAt,
         )}`,
         actions: [
           {
             label: "Abrir foto",
             onClick: () => {
               const index = photos.findIndex(
-                (item) => item.publicId === photo.publicId
+                (item) => item.publicId === photo.publicId,
               );
               if (index >= 0) {
+                setPreviewDragOffset(0);
+                setIsPreviewDragging(false);
+                setIsPreviewJumping(false);
                 setActivePhotoIndex(index);
               }
               setActionTarget(null);
@@ -464,7 +483,7 @@ export default function Gallery() {
             destructive: true,
             onClick: () => {
               const confirmed = window.confirm(
-                "Deseja excluir esta foto da galeria?"
+                "Deseja excluir esta foto da galeria?",
               );
               if (!confirmed) return;
               deletePhotoMutation.mutate(photo.publicId);
@@ -492,7 +511,7 @@ export default function Gallery() {
             destructive: true,
             onClick: () => {
               const confirmed = window.confirm(
-                `Deseja excluir a pasta "${folder.label}" e todas as fotos dentro dela?`
+                `Deseja excluir a pasta "${folder.label}" e todas as fotos dentro dela?`,
               );
               if (!confirmed) return;
               deleteFolderMutation.mutate(folder.path);
@@ -503,12 +522,7 @@ export default function Gallery() {
     }
 
     return null;
-  }, [
-    actionTarget,
-    deleteFolderMutation,
-    deletePhotoMutation,
-    photos,
-  ]);
+  })();
 
   const isDesktop = viewport.width >= 1024;
 
@@ -590,158 +604,188 @@ export default function Gallery() {
     }, 520);
   }
 
-  function clampPreviewOffset(nextOffset, scale) {
-    if (scale <= MIN_PREVIEW_SCALE) {
-      return { x: 0, y: 0 };
+  function clearPreviewJumpFrame() {
+    if (previewJumpRafRef.current) {
+      cancelAnimationFrame(previewJumpRafRef.current);
+      previewJumpRafRef.current = null;
+    }
+  }
+
+  function showPhotoAt(index, behavior = "smooth") {
+    if (photos.length === 0) return;
+
+    const nextIndex = clamp(index, 0, photos.length - 1);
+    const distanceFromCurrent =
+      activePhotoIndex >= 0 ? Math.abs(nextIndex - activePhotoIndex) : 0;
+    const shouldJump = behavior === "auto" || distanceFromCurrent > 1;
+
+    clearPreviewJumpFrame();
+    setPreviewDragOffset(0);
+    setIsPreviewDragging(false);
+
+    if (shouldJump) {
+      setIsPreviewJumping(true);
     }
 
-    const frame = previewFrameRef.current;
-    if (!frame) return nextOffset;
+    setActivePhotoIndex(nextIndex);
 
-    const maxX = Math.max(0, ((frame.clientWidth * scale) - frame.clientWidth) / 2);
-    const maxY = Math.max(0, ((frame.clientHeight * scale) - frame.clientHeight) / 2);
+    if (shouldJump) {
+      previewJumpRafRef.current = requestAnimationFrame(() => {
+        setIsPreviewJumping(false);
+        previewJumpRafRef.current = null;
+      });
+    }
+  }
 
-    return {
-      x: clamp(nextOffset.x, -maxX, maxX),
-      y: clamp(nextOffset.y, -maxY, maxY),
+  function handlePreviewWheel(event) {
+    if (event.ctrlKey || photos.length <= 1) return;
+
+    const dominantDelta =
+      Math.abs(event.deltaY) >= Math.abs(event.deltaX)
+        ? event.deltaY
+        : event.deltaX;
+
+    if (Math.abs(dominantDelta) < 35) return;
+
+    event.preventDefault();
+    if (previewWheelLockedRef.current) return;
+
+    previewWheelLockedRef.current = true;
+
+    if (dominantDelta > 0) {
+      goNextPhoto();
+    } else {
+      goPrevPhoto();
+    }
+
+    if (previewWheelTimeoutRef.current) {
+      clearTimeout(previewWheelTimeoutRef.current);
+    }
+
+    previewWheelTimeoutRef.current = setTimeout(() => {
+      previewWheelLockedRef.current = false;
+      previewWheelTimeoutRef.current = null;
+    }, 360);
+  }
+
+  function handlePreviewPointerDown(event) {
+    if (event.button !== undefined && event.button !== 0) return;
+
+    previewDragRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      offsetX: 0,
+      offsetY: 0,
+      active: false,
     };
+
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    clearPreviewJumpFrame();
+    setIsPreviewJumping(false);
+    setIsPreviewDragging(true);
   }
 
-  function setScaleWithClamp(nextScale) {
-    const clampedScale = clamp(nextScale, MIN_PREVIEW_SCALE, MAX_PREVIEW_SCALE);
-    setPreviewScale(clampedScale);
-    setPreviewOffset((current) => clampPreviewOffset(current, clampedScale));
-  }
+  function handlePreviewPointerMove(event) {
+    const drag = previewDragRef.current;
+    if (drag.pointerId !== event.pointerId) return;
 
-  function handlePreviewTouchStart(event) {
-    setIsPreviewInteracting(true);
-    const touches = event.touches;
-    if (!touches || touches.length === 0) return;
+    const rawOffsetX = event.clientX - drag.startX;
+    const offsetY = event.clientY - drag.startY;
+    const isHorizontalIntent = Math.abs(rawOffsetX) > Math.abs(offsetY);
 
-    if (touches.length === 2) {
-      const distance = getTouchDistance(touches[0], touches[1]);
-      previewGestureRef.current = {
-        ...previewGestureRef.current,
-        mode: "pinch",
-        startDistance: distance,
-        startScale: previewScale,
-      };
+    if (!drag.active && Math.abs(rawOffsetX) < 6 && Math.abs(offsetY) < 6) {
       return;
     }
 
-    const touch = touches[0];
-    const now = Date.now();
-    const isDoubleTap = now - lastTapRef.current < 300;
-    lastTapRef.current = now;
+    drag.active = true;
+    drag.offsetY = offsetY;
 
-    if (isDoubleTap) {
-      const nextScale = previewScale > 1.2 ? 1 : 2.2;
-      setScaleWithClamp(nextScale);
-      if (nextScale <= 1.01) {
-        setPreviewOffset({ x: 0, y: 0 });
-      }
-      return;
+    if (isHorizontalIntent) {
+      event.preventDefault();
     }
 
-    previewGestureRef.current = {
-      ...previewGestureRef.current,
-      mode: previewScale > 1.02 ? "pan" : "swipe",
-      startX: touch.clientX,
-      startY: touch.clientY,
-      swipeDx: 0,
-      swipeDy: 0,
-      startOffsetX: previewOffset.x,
-      startOffsetY: previewOffset.y,
-      startScale: previewScale,
-      startDistance: 0,
+    const isPullingPastStart = activePhotoIndex === 0 && rawOffsetX > 0;
+    const isPullingPastEnd =
+      activePhotoIndex === photos.length - 1 && rawOffsetX < 0;
+    const resistance = isPullingPastStart || isPullingPastEnd ? 0.35 : 1;
+    const offsetX = rawOffsetX * resistance;
+
+    drag.offsetX = offsetX;
+    setPreviewDragOffset(offsetX);
+  }
+
+  function finishPreviewDrag(event, canceled = false) {
+    const drag = previewDragRef.current;
+    if (drag.pointerId !== event.pointerId) return;
+
+    const frameWidth =
+      previewFrameRef.current?.clientWidth || window.innerWidth || 1;
+    const threshold = Math.max(
+      PREVIEW_SWIPE_THRESHOLD_PX,
+      Math.min(120, frameWidth * 0.18),
+    );
+    const shouldMove =
+      !canceled &&
+      Math.abs(drag.offsetX) > threshold &&
+      Math.abs(drag.offsetX) > Math.abs(drag.offsetY);
+
+    let nextIndex = activePhotoIndex;
+    if (shouldMove) {
+      nextIndex = drag.offsetX < 0 ? activePhotoIndex + 1 : activePhotoIndex - 1;
+      nextIndex = clamp(nextIndex, 0, photos.length - 1);
+    }
+
+    const pointerTarget = event.currentTarget;
+    const pointerId = drag.pointerId;
+
+    previewDragRef.current = {
+      pointerId: null,
+      startX: 0,
+      startY: 0,
+      offsetX: 0,
+      offsetY: 0,
+      active: false,
     };
-  }
 
-  function handlePreviewTouchMove(event) {
-    const touches = event.touches;
-    if (!touches || touches.length === 0) return;
-
-    if (touches.length === 2) {
-      const gesture = previewGestureRef.current;
-      const currentDistance = getTouchDistance(touches[0], touches[1]);
-      const baseDistance = gesture.startDistance || currentDistance;
-      const baseScale = gesture.startScale || previewScale;
-      const nextScale = baseScale * (currentDistance / baseDistance);
-
-      event.preventDefault();
-      setScaleWithClamp(nextScale);
-      previewGestureRef.current.mode = "pinch";
-      return;
+    if (pointerTarget.hasPointerCapture?.(pointerId)) {
+      pointerTarget.releasePointerCapture(pointerId);
     }
 
-    const gesture = previewGestureRef.current;
-    const touch = touches[0];
-    const dx = touch.clientX - gesture.startX;
-    const dy = touch.clientY - gesture.startY;
-
-    if (previewScale > 1.02 || gesture.mode === "pan") {
-      event.preventDefault();
-      previewGestureRef.current.mode = "pan";
-      const nextOffset = {
-        x: gesture.startOffsetX + dx,
-        y: gesture.startOffsetY + dy,
-      };
-      setPreviewOffset(clampPreviewOffset(nextOffset, previewScale));
-      return;
-    }
-
-    previewGestureRef.current.swipeDx = dx;
-    previewGestureRef.current.swipeDy = dy;
-  }
-
-  function handlePreviewTouchEnd(event) {
-    const gesture = previewGestureRef.current;
-
-    if (!event.touches || event.touches.length === 0) {
-      setIsPreviewInteracting(false);
-      if (
-        gesture.mode === "swipe" &&
-        previewScale <= 1.02 &&
-        Math.abs(gesture.swipeDx) > SWIPE_THRESHOLD_PX &&
-        Math.abs(gesture.swipeDx) > Math.abs(gesture.swipeDy)
-      ) {
-        if (gesture.swipeDx < 0) {
-          goNextPhoto();
-        } else {
-          goPrevPhoto();
-        }
-      }
-
-      previewGestureRef.current = {
-        mode: "idle",
-        startX: 0,
-        startY: 0,
-        swipeDx: 0,
-        swipeDy: 0,
-        startScale: previewScale,
-        startDistance: 0,
-        startOffsetX: previewOffset.x,
-        startOffsetY: previewOffset.y,
-      };
-    }
+    setIsPreviewDragging(false);
+    setPreviewDragOffset(0);
+    setActivePhotoIndex(nextIndex);
   }
 
   function closePreview() {
-    setPreviewScale(1);
-    setPreviewOffset({ x: 0, y: 0 });
-    setIsPreviewInteracting(false);
+    clearPreviewJumpFrame();
+    if (previewWheelTimeoutRef.current) {
+      clearTimeout(previewWheelTimeoutRef.current);
+      previewWheelTimeoutRef.current = null;
+    }
+    previewWheelLockedRef.current = false;
+    setPreviewDragOffset(0);
+    setIsPreviewDragging(false);
+    setIsPreviewJumping(false);
     setActivePhotoIndex(-1);
   }
 
   function goPrevPhoto() {
-    setActivePhotoIndex((current) => (current > 0 ? current - 1 : current));
+    showPhotoAt(activePhotoIndex - 1);
   }
 
   function goNextPhoto() {
-    setActivePhotoIndex((current) =>
-      current < photos.length - 1 ? current + 1 : current
-    );
+    showPhotoAt(activePhotoIndex + 1);
   }
+
+  const previewTrackStyle = {
+    transform: `translate3d(calc(${-activePhotoIndex * 100}% + ${previewDragOffset}px), 0, 0)`,
+    transition:
+      isPreviewDragging || isPreviewJumping
+        ? "none"
+        : "transform 320ms cubic-bezier(0.22, 1, 0.36, 1)",
+    willChange: "transform",
+  };
 
   return (
     <div className="min-h-screen bg-[#0f1115] text-white">
@@ -821,7 +865,9 @@ export default function Gallery() {
                     </label>
                     <input
                       value={uploadNewFolder}
-                      onChange={(event) => setUploadNewFolder(event.target.value)}
+                      onChange={(event) =>
+                        setUploadNewFolder(event.target.value)
+                      }
                       placeholder="ex: culto-24-04-2026"
                       className="h-11 w-full rounded-lg border border-white/15 bg-black/25 px-3 text-sm text-white outline-none transition-colors placeholder:text-white/35 focus:border-white/30"
                     />
@@ -952,7 +998,8 @@ export default function Gallery() {
 
           {canUpload ? (
             <p className="mb-3 text-[11px] text-white/45">
-              Segure uma foto ou pasta (ou clique com botao direito) para abrir opcoes de exclusao.
+              Segure uma foto ou pasta (ou clique com botao direito) para abrir
+              opcoes de exclusao.
             </p>
           ) : null}
 
@@ -982,7 +1029,9 @@ export default function Gallery() {
                             y: event.clientY,
                           });
                         }}
-                        onTouchStart={() => startLongPress(() => openFolderActions(folder))}
+                        onTouchStart={() =>
+                          startLongPress(() => openFolderActions(folder))
+                        }
                         onTouchEnd={clearLongPressTimer}
                         onTouchMove={clearLongPressTimer}
                         className="group overflow-hidden rounded-lg border border-white/10 bg-black/25 text-left transition-all hover:border-white/35 hover:bg-black/35"
@@ -1007,7 +1056,9 @@ export default function Gallery() {
                           ) : null}
                         </div>
                         <div className="space-y-1 px-3 py-2.5">
-                          <p className="truncate text-sm font-medium">{folder.label}</p>
+                          <p className="truncate text-sm font-medium">
+                            {folder.label}
+                          </p>
                           <p className="text-xs text-white/55">
                             {folder.count || 0} foto(s)
                           </p>
@@ -1030,7 +1081,7 @@ export default function Gallery() {
                             longPressTriggeredRef.current = false;
                             return;
                           }
-                          setActivePhotoIndex(index);
+                          showPhotoAt(index, "auto");
                         }}
                         onContextMenu={(event) => {
                           if (!canUpload) return;
@@ -1040,7 +1091,9 @@ export default function Gallery() {
                             y: event.clientY,
                           });
                         }}
-                        onTouchStart={() => startLongPress(() => openPhotoActions(photo))}
+                        onTouchStart={() =>
+                          startLongPress(() => openPhotoActions(photo))
+                        }
                         onTouchEnd={clearLongPressTimer}
                         onTouchMove={clearLongPressTimer}
                         className="group relative overflow-hidden rounded-lg border border-white/10 bg-black/20 transition-all hover:border-white/30 focus-visible:outline-none"
@@ -1071,7 +1124,9 @@ export default function Gallery() {
 
                   <div className="flex flex-col items-center gap-2 pt-1">
                     {fetchingPhotos && !isFetchingNextPage ? (
-                      <p className="text-xs text-white/45">Atualizando galeria...</p>
+                      <p className="text-xs text-white/45">
+                        Atualizando galeria...
+                      </p>
                     ) : null}
 
                     {hasNextPage ? (
@@ -1110,69 +1165,118 @@ export default function Gallery() {
       </section>
 
       {activePhoto ? (
-        <div className="fixed inset-0 z-50 bg-black/90">
+        <div className="fixed inset-0 z-50 bg-black text-white">
+          <div className="pointer-events-none absolute inset-x-0 top-0 z-20 h-28 bg-gradient-to-b from-black/85 to-transparent" />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-44 bg-gradient-to-t from-black/90 via-black/55 to-transparent" />
+
+          <div className="absolute left-4 top-4 z-30 rounded-full bg-black/55 px-3 py-1 text-xs font-medium text-white/80 backdrop-blur">
+            {activePhotoIndex + 1} / {photos.length}
+          </div>
+
           <button
             type="button"
             onClick={closePreview}
-            className="absolute right-4 top-4 rounded-full border border-white/20 bg-black/40 p-2 text-white/90 transition-colors hover:bg-black/70"
+            aria-label="Fechar foto"
+            className="absolute right-4 top-4 z-30 rounded-full bg-black/55 p-2 text-white/90 backdrop-blur transition-colors hover:bg-white/15"
           >
             <X size={20} />
           </button>
 
-          <div className="mx-auto flex h-full max-w-6xl items-center justify-center px-4 py-14">
-            <button
-              type="button"
-              onClick={goPrevPhoto}
-              disabled={activePhotoIndex <= 0}
-              className="mr-3 hidden rounded-full border border-white/20 bg-black/40 p-2 text-white/90 transition-colors hover:bg-black/70 disabled:cursor-not-allowed disabled:opacity-35 md:block"
-            >
-              <ChevronLeft size={20} />
-            </button>
+          <button
+            type="button"
+            onClick={goPrevPhoto}
+            disabled={activePhotoIndex <= 0}
+            aria-label="Foto anterior"
+            className="absolute left-4 top-1/2 z-30 hidden -translate-y-1/2 rounded-full bg-black/45 p-3 text-white/90 backdrop-blur transition-colors hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-30 md:block"
+          >
+            <ChevronLeft size={24} />
+          </button>
 
-            <div className="w-full overflow-hidden rounded-xl border border-white/10 bg-black/25">
-              <div
-                ref={previewFrameRef}
-                className="relative flex h-[72vh] items-center justify-center overflow-hidden"
-                onTouchStart={handlePreviewTouchStart}
-                onTouchMove={handlePreviewTouchMove}
-                onTouchEnd={handlePreviewTouchEnd}
-                onTouchCancel={handlePreviewTouchEnd}
-                style={{ touchAction: "none" }}
-              >
-                <img
-                  src={activePhoto.url}
-                  alt={activePhoto.folderLabel || "Preview da foto"}
-                  draggable={false}
-                  onDragStart={(event) => event.preventDefault()}
-                  className="max-h-[72vh] w-full select-none object-contain"
-                  style={{
-                    transform: `translate3d(${previewOffset.x}px, ${previewOffset.y}px, 0) scale(${previewScale})`,
-                    transformOrigin: "center center",
-                    transition: isPreviewInteracting
-                      ? "none"
-                      : "transform 120ms ease-out",
-                  }}
-                />
+          <button
+            type="button"
+            onClick={goNextPhoto}
+            disabled={activePhotoIndex >= photos.length - 1}
+            aria-label="Proxima foto"
+            className="absolute right-4 top-1/2 z-30 hidden -translate-y-1/2 rounded-full bg-black/45 p-3 text-white/90 backdrop-blur transition-colors hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-30 md:block"
+          >
+            <ChevronRight size={24} />
+          </button>
+
+          <div
+            ref={previewFrameRef}
+            onWheel={handlePreviewWheel}
+            onPointerDown={handlePreviewPointerDown}
+            onPointerMove={handlePreviewPointerMove}
+            onPointerUp={finishPreviewDrag}
+            onPointerCancel={(event) => finishPreviewDrag(event, true)}
+            onLostPointerCapture={(event) => finishPreviewDrag(event, true)}
+            className="h-full overflow-hidden"
+            style={{ touchAction: "none" }}
+          >
+            <div
+              className="flex h-full w-full"
+              style={previewTrackStyle}
+            >
+              {photos.map((photo, index) => (
+                <div
+                  key={photo.publicId || photo.id}
+                  className="flex h-full w-full shrink-0 items-center justify-center px-3 pb-36 pt-16 sm:px-8 sm:pb-40"
+                >
+                  <img
+                    src={photo.url}
+                    alt={photo.folderLabel || "Foto da galeria"}
+                    loading={
+                      Math.abs(index - activePhotoIndex) <= 1 ? "eager" : "lazy"
+                    }
+                    decoding="async"
+                    draggable={false}
+                    onDragStart={(event) => event.preventDefault()}
+                    className="pointer-events-none max-h-full max-w-full select-none object-contain shadow-[0_24px_80px_rgba(0,0,0,0.45)]"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="absolute inset-x-0 bottom-0 z-30">
+            <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 pb-4">
+              <div className="flex flex-wrap items-end justify-between gap-3 text-sm">
+                <div>
+                  <p className="font-medium text-white">
+                    {activePhoto.folderLabel || "Geral"}
+                  </p>
+                  <p className="mt-1 text-xs text-white/60">
+                    {formatDate(activePhoto.createdAt)}
+                  </p>
+                </div>
+                <p className="text-xs text-white/55">
+                  Role, arraste ou use as setas para navegar.
+                </p>
               </div>
-              <div className="flex flex-wrap items-center justify-between gap-2 border-t border-white/10 px-4 py-3 text-sm text-white/75">
-                <span>{activePhoto.folderLabel || "Geral"}</span>
-                <span className="text-xs md:text-sm">
-                  {formatDate(activePhoto.createdAt)}
-                </span>
-                <span className="w-full text-[11px] text-white/55 md:w-auto">
-                  Pinça para zoom, arraste para mover e deslize para trocar.
-                </span>
+
+              <div className="cc-hide-scrollbar flex gap-2 overflow-x-auto pb-1">
+                {photos.map((photo, index) => (
+                  <button
+                    key={photo.publicId || photo.id}
+                    type="button"
+                    onClick={() => showPhotoAt(index)}
+                    aria-label={`Abrir foto ${index + 1}`}
+                    className={`h-14 w-20 shrink-0 overflow-hidden rounded-md border transition-all ${
+                      activePhotoIndex === index
+                        ? "border-white opacity-100"
+                        : "border-white/20 opacity-55 hover:opacity-85"
+                    }`}
+                  >
+                    <img
+                      src={photo.url}
+                      alt={photo.folderLabel || "Miniatura da foto"}
+                      loading="lazy"
+                      className="h-full w-full object-cover"
+                    />
+                  </button>
+                ))}
               </div>
             </div>
-
-            <button
-              type="button"
-              onClick={goNextPhoto}
-              disabled={activePhotoIndex >= photos.length - 1}
-              className="ml-3 hidden rounded-full border border-white/20 bg-black/40 p-2 text-white/90 transition-colors hover:bg-black/70 disabled:cursor-not-allowed disabled:opacity-35 md:block"
-            >
-              <ChevronRight size={20} />
-            </button>
           </div>
         </div>
       ) : null}

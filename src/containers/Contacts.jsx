@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { createElement, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   CheckCircle2,
@@ -274,11 +274,11 @@ export default function Contacts() {
   );
 }
 
-function InfoItem({ icon: Icon, label, value }) {
+function InfoItem({ icon, label, value }) {
   return (
     <div className="flex items-start gap-4">
       <div className="mt-0.5 rounded-lg bg-white/10 p-2.5">
-        <Icon size={20} className="text-white" />
+        {createElement(icon, { size: 20, className: "text-white" })}
       </div>
       <div>
         <h3 className="mb-1 font-medium">{label}</h3>

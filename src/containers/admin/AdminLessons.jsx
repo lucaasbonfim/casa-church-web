@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Trash2 } from "lucide-react";
 import AdminLayout from "../../components/AdminLayout";
@@ -58,11 +58,8 @@ export default function AdminLessons() {
   const sermons = useMemo(() => getSermons(sermonsData), [sermonsData]);
   const lessons = useMemo(() => getLessons(lessonsData), [lessonsData]);
 
-  useEffect(() => {
-    if (!formData.sermonId && sermons[0]?.id) {
-      setFormData((current) => ({ ...current, sermonId: sermons[0].id }));
-    }
-  }, [formData.sermonId, sermons]);
+  const defaultSermonId = sermons[0]?.id || "";
+  const selectedSermonId = formData.sermonId || defaultSermonId;
 
   const invalidate = () =>
     queryClient.invalidateQueries({ queryKey: ["admin-lessons"] });
@@ -104,7 +101,7 @@ export default function AdminLessons() {
 
   function openCreateModal() {
     setEditingLesson(null);
-    setFormData({ ...initialForm, sermonId: sermons[0]?.id || "" });
+    setFormData({ ...initialForm, sermonId: defaultSermonId });
     setIsModalOpen(true);
   }
 
@@ -113,7 +110,7 @@ export default function AdminLessons() {
     setFormData({
       title: lesson.title || "",
       description: lesson.description || "",
-      sermonId: lesson.sermonId || sermons[0]?.id || "",
+      sermonId: lesson.sermonId || defaultSermonId,
       videoLink: lesson.videoLink || "",
       ordem: Number(lesson.ordem) || 1,
     });
@@ -123,12 +120,16 @@ export default function AdminLessons() {
   function closeModal() {
     setIsModalOpen(false);
     setEditingLesson(null);
-    setFormData({ ...initialForm, sermonId: sermons[0]?.id || "" });
+    setFormData({ ...initialForm, sermonId: defaultSermonId });
   }
 
   function handleSubmit(event) {
     event.preventDefault();
-    const body = { ...formData, ordem: Number(formData.ordem) };
+    const body = {
+      ...formData,
+      sermonId: selectedSermonId,
+      ordem: Number(formData.ordem),
+    };
 
     if (editingLesson) {
       updateMutation.mutate({ id: editingLesson.id, body });
@@ -234,7 +235,7 @@ export default function AdminLessons() {
         <label className="block text-sm font-medium text-white/90">
           Sermao
           <select
-            value={formData.sermonId}
+            value={selectedSermonId}
             onChange={(event) =>
               setFormData((current) => ({
                 ...current,

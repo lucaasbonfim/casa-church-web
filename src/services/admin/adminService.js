@@ -7,7 +7,6 @@ export async function getAdminStats() {
     return data;
 }
 
-// eslint-disable-next-line no-unused-vars
 export async function getRecentActivities({ page = 1, limit = 5 } = {}) {
     const params = new URLSearchParams({
         page: page.toString(),

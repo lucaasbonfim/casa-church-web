@@ -26,6 +26,7 @@ export default function ChurchHouses() {
   const [isSearchingAddress, setIsSearchingAddress] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
   const [selectedChurchHouseId, setSelectedChurchHouseId] = useState();
+  const [originFocusRequest, setOriginFocusRequest] = useState(0);
   const [isDesktopLayout, setIsDesktopLayout] = useState(() => {
     if (typeof window === "undefined") {
       return false;
@@ -200,6 +201,7 @@ export default function ChurchHouses() {
           longitude: position.coords.longitude,
           label: "Sua localizacao atual",
         });
+        setOriginFocusRequest((current) => current + 1);
         setIsLocating(false);
       },
       () => {
@@ -216,7 +218,7 @@ export default function ChurchHouses() {
   const searchPanel = (
     <div
       className={`rounded-[28px] border border-white/10 bg-black/20 backdrop-blur-sm ${
-        isDesktopLayout ? "p-4 space-y-3" : "p-5 md:p-6 xl:p-5 space-y-4"
+        isDesktopLayout ? "space-y-3 p-4" : "space-y-5 p-5 md:p-6 xl:p-5"
       }`}
     >
       <h2 className="text-xl font-semibold">Descobrir proximidade</h2>
@@ -268,25 +270,25 @@ export default function ChurchHouses() {
 
   const churchHouseList = (
     <div
-      className={`rounded-[28px] border border-white/10 bg-white/5 p-4 md:p-5 ${
-        isDesktopLayout ? "min-h-0 flex flex-1 flex-col" : "space-y-3"
+      className={`rounded-[28px] border border-white/10 bg-white/5 p-5 md:p-6 ${
+        isDesktopLayout ? "flex min-h-0 flex-1 flex-col" : "space-y-5"
       }`}
     >
-      <div className="flex items-center justify-between shrink-0">
-        <div>
+      <div className="flex shrink-0 items-start justify-between gap-4">
+        <div className="min-w-0">
           <h3 className="text-lg font-semibold">CIs encontrados</h3>
           <p className="text-sm text-white/50">
             Toque em um CI para abrir os detalhes no mapa.
           </p>
         </div>
-        <span className="text-sm text-white/50 text-right leading-tight shrink-0">
+        <span className="shrink-0 text-right text-sm leading-tight text-white/50">
           {rankedChurchHouses.length} unidades
         </span>
       </div>
 
       <div
-        className={`space-y-3 overflow-auto pr-1 ${
-          isDesktopLayout ? "mt-3 min-h-0 flex-1" : "max-h-[520px]"
+        className={`space-y-4 overflow-auto ${
+          isDesktopLayout ? "mt-4 min-h-0 flex-1 pr-1" : "max-h-[560px]"
         }`}
       >
         {rankedChurchHouses.map((churchHouse, index) => {
@@ -296,28 +298,28 @@ export default function ChurchHouses() {
             <button
               key={churchHouse.id}
               onClick={() => setSelectedChurchHouseId(churchHouse.id)}
-              className={`w-full rounded-2xl border px-4 py-4 text-left transition ${
+              className={`w-full rounded-2xl border p-4 text-left transition sm:p-5 ${
                 isSelected
                   ? "border-violet-400/60 bg-violet-500/12 shadow-[0_0_0_1px_rgba(167,139,250,0.18)]"
                   : "border-white/10 bg-white/5 hover:bg-white/10"
               }`}
             >
               <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.24em] text-white/45 mb-2">
+                <div className="min-w-0">
+                  <p className="mb-2 text-xs uppercase tracking-[0.24em] text-white/45">
                     {origin ? `${index + 1} mais proximo` : "CI"}
                   </p>
-                  <h4 className="font-semibold text-white">
+                  <h4 className="truncate font-semibold text-white">
                     {churchHouse.name}
                   </h4>
-                  <p className="text-sm text-white/60 mt-1">
+                  <p className="mt-1 text-sm text-white/60">
                     {churchHouse.neighborhood}, {churchHouse.city} -{" "}
                     {churchHouse.uf}
                   </p>
                 </div>
 
                 {origin && (
-                  <span className="rounded-full bg-white/10 px-3 py-1 text-xs text-white/80 whitespace-nowrap">
+                  <span className="whitespace-nowrap rounded-full bg-white/10 px-3 py-1 text-xs text-white/80">
                     {formatDistance(churchHouse.distanceInKm)}
                   </span>
                 )}
@@ -365,7 +367,7 @@ export default function ChurchHouses() {
           </div>
         ) : rankedChurchHouses.length ? (
           !isDesktopLayout ? (
-            <section className="space-y-6">
+            <section className="mt-8 space-y-8">
               {churchHouseList}
 
               <ChurchHousesMap
@@ -374,6 +376,7 @@ export default function ChurchHouses() {
                 onSelect={(churchHouse) => setSelectedChurchHouseId(churchHouse.id)}
                 onCloseSelected={() => setSelectedChurchHouseId(null)}
                 origin={origin}
+                originFocusRequest={originFocusRequest}
                 onUseCurrentLocation={handleUseCurrentLocation}
                 isLocating={isLocating}
               />
@@ -399,7 +402,7 @@ export default function ChurchHouses() {
               </section>
 
               <section className="grid min-h-0 flex-1 grid-cols-[390px_minmax(0,1fr)] gap-5">
-                <div className="flex min-h-0 flex-col gap-3">
+                <div className="flex min-h-0 flex-col gap-4">
                   {searchPanel}
                   {churchHouseList}
                 </div>
@@ -410,6 +413,7 @@ export default function ChurchHouses() {
                   onSelect={(churchHouse) => setSelectedChurchHouseId(churchHouse.id)}
                   onCloseSelected={() => setSelectedChurchHouseId(null)}
                   origin={origin}
+                  originFocusRequest={originFocusRequest}
                   onUseCurrentLocation={handleUseCurrentLocation}
                   isLocating={isLocating}
                   className="h-full min-h-[620px]"

@@ -94,7 +94,7 @@ export default function AdminUsers() {
 
   const updateMutation = useMutation({
     mutationFn: ({ id, body }) => updateUser(id, body),
-    onSuccess: (result, variables) => {
+    onSuccess: (result) => {
       const loggedUser = getStoredUser();
       const updatedUser = result?.user ?? result;
 
